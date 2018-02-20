@@ -55,10 +55,15 @@ def prune_vocabulary(filename, threshold = 0):
 	ctr[' '] = 0
 	n = len(ctr)
 	vocab = [v for v in ctr if ctr[v] > threshold]
-	print n 
+	print ctr
 	print "We lose %f percent of vocabulary" % (100 - ((len(vocab) / float(n)) * 100)) 
 	return vocab, n 
 
+'''
+TO DOs: 
+spell correction 
+
+'''
 def embeddings_layer(data): 
 	pass 
 

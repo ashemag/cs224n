@@ -7,8 +7,9 @@ import numpy as np
 import re
 import string
 import time
-
 from FeatureExtractor import *
+
+filename = 'one-hot-dataset-small.pkl'
 
 class Comment: 
 	def __init__(self, example_id, words, labels):
@@ -113,6 +114,6 @@ if __name__ == "__main__":
 	dataset = DataSet(DataSet.TRAIN_CSV, feature_extractor, count=1000, verbose=True)
 	x, y = dataset.get_data()
 
-	pickle.dump(dataset, open('one-hot-dataset-small.pkl', 'wb'))
+	pickle.dump(dataset, open(filename, 'wb'))
 
 

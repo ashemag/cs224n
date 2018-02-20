@@ -7,7 +7,8 @@ import numpy as np
 import re
 import string
 import time
-from FeatureExtractor import *
+
+from feature_extractor import *
 
 filename = 'one-hot-dataset-small.pkl'
 
@@ -106,7 +107,6 @@ class DataSet:
 	def evaluate_model(self, model):
 		#y_hat = [ model.predict(x_value) for x_value in self.x ]
 		pass
-
 
 # Debugging / Testing code
 if __name__ == "__main__":

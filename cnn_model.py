@@ -3,8 +3,8 @@ import datetime
 import numpy as np
 import tensorflow as tf
 
-from DataSet import *
-from Model import *
+from dataset import *
+from model import *
 from util import Progbar
 
 class CNNModel(Model):

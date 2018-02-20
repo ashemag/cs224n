@@ -19,21 +19,22 @@ class FeatureExtractor:
 		raise NotImplementedError("Subclasses of FeatureExtractor must implement parse().")
 
 
-# Output feature vectors are one-hot word vectors concatenated with capitalization features.
 class OneHotFeatureExtractor(FeatureExtractor):
-	def __init__(self):
+	def __init__(self, comment_length):
 		FeatureExtractor.__init__(self)
+		self.comment_length = comment_length
 
 	def parse(self, words, vocab):
-		capitalization_indices = [ self.capitalization_index(word) for word in words ]
-		one_hot_capitalization = np.eye(FeatureExtractor.N_CAPITALIZATION_FEATURES)[capitalization_indices]
+		valid_words = [ word.lower() if word.lower() in vocab else DataSet.UNKNOWN_WORD for word in words ]
+		word_features = [ vocab[word] for word in valid_words ]
+		capital_features = [ self.capitalization_index(word) for word in words ]
+		
+		if len(word_features) < self.comment_length:
+			padding_length = self.comment_length-len(word_features)
+			word_features += [len(vocab)] * padding_length
+			capital_features += [3] * padding_length
 
-		valid_words = [ word.lower() if word.lower() in vocab else Dataset.UNKNOWN_WORD for word in words ]
-		word_indices = [ vocab.index(word) for word in valid_words ]		
-		one_hot_word_vectors = np.eye(len(vocab))[word_indices]
-
-		return np.concatenate((one_hot_word_vectors, one_hot_capitalization), axis=1)
-
+		return word_features[:self.comment_length], capital_features[:self.comment_length]
 
 
 # Debugging / Testing code

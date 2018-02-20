@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import collections 
+import cPickle as pickle
 import csv
 import numpy as np
 import re
@@ -56,7 +57,7 @@ class DataSet:
 	def prune_vocabulary(vocab):
 		new_vocab = sorted(list(set(vocab.elements())))
 		new_vocab.append(DataSet.UNKNOWN_WORD)
-		return new_vocab
+		return { word:index for index, word in enumerate(new_vocab) }
 
 	# Loads all of the comment data from the given |csv_filename|, only reads
 	# the first |count| comments from the dataset (only to speed up when
@@ -108,16 +109,10 @@ class DataSet:
 
 # Debugging / Testing code
 if __name__ == "__main__":
-	feature_extractor = OneHotFeatureExtractor()
-	dataset = DataSet(DataSet.TRAIN_CSV, feature_extractor, count=10000, verbose=True)
+	feature_extractor = OneHotFeatureExtractor(100)
+	dataset = DataSet(DataSet.TRAIN_CSV, feature_extractor, count=1000, verbose=True)
 	x, y = dataset.get_data()
 
-	'''
-	np.set_printoptions(threshold=10000)
-	index = 6
-	print dataset.comments[index].words
-	print x[index]
-	print y[index]
-	'''
+	pickle.dump(dataset, open('one-hot-dataset-small.pkl', 'wb'))
 
 

@@ -1,71 +1,96 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-import csv 
-import string 
-import collections 
+class DataUtil:
+	CLASSES = ['toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate']
+	TRAIN_CSV = "data/train.csv"
+	TEST_CSV = "data/test.csv"
+	UNKNOWN_WORD = "<unknown_word>"
 
-test_csv = "data/test.csv"
-train_csv = "data/train.csv"
-WRITE_CORPUS = False 
+	# csv_filename = CSV file to read the comment data from
+	# feature_extractor = function that converts a list of words into a list of word embeddings
+	def __init__(self, is_training, feature_extractor, count=None, verbose=False):
+		self.is_training = is_training
 
-class Comment: 
-	def __init__(self, example_id, comment_text, label_vector, embedding =''):
-		self.example_id = example_id
-		self.comment_text = comment_text
-		self.label_vector = label_vector
-		self.embedding = embedding
+		csv_filename = self.TRAIN_CSV if is_training else self.TEST_CSV
+		start_time = int(round(time.time() * 1000)) 
+		self.comments, self.vocab = self.load_data(csv_filename, count) 
+		end_time = int(round(time.time() * 1000))
 
-def load_data(): 
-	print "Loading training data..."
-	valid_characters = string.printable[0:62]
-	data = {}
-	corpus = ''
-	with open(train_csv) as csvfile:
-		reader = csv.DictReader(csvfile)
-		for i, row in enumerate(reader):
-			example_id, comment_text = row['id'], row['comment_text'] 
-			toxic, severe_toxic, obscene = int(row['toxic']), int(row['severe_toxic']), int(row['obscene'])
-			threat, insult, identity_hate = int(row['threat']), int(row['insult']), int(row['identity_hate']) 
-			data[example_id] = Comment(example_id, comment_text, [toxic, severe_toxic, obscene, threat, insult, identity_hate])
-			if WRITE_CORPUS:
-				for ch in comment_text: 
-					if ch not in valid_characters: 
-						comment_text = comment_text.replace(ch, ' ')
+		self.feature_extractor = feature_extractor
+		self.verbose = verbose
+		self.x = None
+		self.y = None
+		
+		#train data comments 
+		if self.verbose:
+			print 'Loaded {0} comments from "{1}" in {2} seconds.'.format(
+				len(self.comments),
+				csv_filename,
+				(end_time-start_time) / 1000.0
+			)
+			print 'Vocabulary size = {0}'.format(len(self.vocab))
+			print "Most common vocabulary words = {0}".format(self.vocab.most_common(5))
 
-				corpus += ' ' + comment_text
+	# Splits the input |text| into a list of words.
+	# TODO: We may want to remove stop words and/or change this parsing in some way.
+	@staticmethod
+	def split_into_words(text):
+		return re.findall(r"[\w'-]+|[.,!?;]", text)
 
-	if WRITE_CORPUS: 
-		with open("corpus.txt", "w") as f: 
-			f.write(corpus)
+	# Processes vocabulary by removing some subset of the words
+	# TODO: We need to decide on how to go about this. 
+	@staticmethod
+	def prune_vocabulary(vocab):
+		new_vocab = sorted(list(set(vocab.elements())))
+		new_vocab.append(DataSet.UNKNOWN_WORD)
+		return { word:index for index, word in enumerate(new_vocab) }
 
-	print "Done. Read %d comments." % i 
-	return data  
+	# Loads all of the comment data from the given |csv_filename|, only reads
+	# the first |count| comments from the dataset (for debugging)
+	def load_data(self, csv_filename, count=None, train=True):
+		comments = []
+		vocab = collections.Counter()
 
-#map word comments to word vectors (GloVe)
-# for each comment example, for each word -> vector 
-#initialize with glove vectors 
+		with open(csv_filename) as csvfile:
+			reader = csv.DictReader(csvfile)
+			for i, row in enumerate(reader):
+				if i == count: break
+				words = DataSet.split_into_words(row['comment_text']) #list 
+				labels = []
+				if self.is_training:
+					labels = set([c for c in DataUtil.CLASSES if row[c] == '1'])
+				comments.append(Comment(row['id'], words, labels))
+				vocab.update([word.lower() for word in words])
+		return comments, vocab
 
-#Helper: Get vocabulary from comments and remove terms that appear less than X times 
-# Maybe not a good idea for comments, since many words are WOOOOOOO
-def prune_vocabulary(filename, threshold = 0): 
-	print "Pruning vocabulary..."
-	with open(filename, "r") as f: 
-		corpus = f.read().lower() 
-	ctr = collections.Counter([word for word in corpus.split(' ')])
-	ctr[' '] = 0
-	n = len(ctr)
-	vocab = [v for v in ctr if ctr[v] > threshold]
-	print ctr
-	print "We lose %f percent of vocabulary" % (100 - ((len(vocab) / float(n)) * 100)) 
-	return vocab, n 
+	# Converts a set of |labels| into the appropriate "one-hot" vector (i.e. there will
+	# be ones in the indices corresponding to the input |labels|)
+	@staticmethod
+	def to_label_vector(labels):
+		return np.array([ 1 if klass in labels else 0 for klass in DataSet.CLASSES ])
 
-'''
-TO DOs: 
-spell correction 
+	# Returns the fully preprocessed input (x) and output (y):
+	# (x) will be a list of numpy arrays with shape (comment length, embedding size)
+	#     - Each element of x is a list of word embeddings for the words in the comment.
+	# (y) will be a list of numpy arrays with shape (# of classes, )
+	def get_data(self):
+		if self.x is None or self.y is None:
+			start_time = int(round(time.time() * 1000))
+			self.x = [ self.feature_extractor.parse(comment.words, self.vocab) for comment in self.comments ]
+			self.y = [ DataUtil.to_label_vector(comment.labels) for comment in self.comments ]		
+			ids = [comment.example_id for comment in self.comments]
 
-'''
-def embeddings_layer(data): 
-	pass 
+			end_time = int(round(time.time() * 1000))
+
+			if self.verbose:
+				print 'Processing data (int get_data()) took {0} seconds.'.format((end_time-start_time) / 1000.0)
+
+		return self.x, self.y, ids
+
+	# Takes in a |model| and evaluates its performance on this dataset
+	# TODO: Implement This (probably want loss, accuracy, precision, recall, F1, etc.). 
+	def evaluate_model(self, model):
+		#y_hat = [ model.predict(x_value) for x_value in self.x ]
+		pass
+
 
 #driver 
 if __name__ == "__main__": 

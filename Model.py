@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import math
 import random
 import tensorflow as tf
 
@@ -11,10 +12,12 @@ class Model:
 	# Generates a list of batches for training all with a size |batch_size|
 	# (except for possibly the last batch)
 	@staticmethod
-	def generate_batches(x, y, batch_size):
-		data = zip(x, y)
+	def generate_batches(self, x, y, batch_size):
+		data = list(zip(x, y))
 		random.shuffle(data)
-		return [ tuple(zip(*data[i:i+batch_size])) for i in range(len(data) / batch_size + 1) ]
+		num_batches = int(math.ceil(len(x)/batch_size))
+		for i in range(num_batches):
+			yield tuple(zip(*data[batch_size*i:batch_size*(i+1)]))
 
 	# Generates a random sample from (x, y) of size |sample_size|
 	@staticmethod

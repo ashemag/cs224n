@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import numpy as np
-from dataset import * 
+from DataSet import * 
 
 class FeatureExtractor:
 	N_CAPITALIZATION_FEATURES = 3

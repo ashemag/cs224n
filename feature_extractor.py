@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import numpy as np
-from DataSet import * 
 
 class FeatureExtractor:
 	N_CAPITALIZATION_FEATURES = 3
@@ -18,14 +17,17 @@ class FeatureExtractor:
 		raise NotImplementedError("Subclasses of FeatureExtractor must implement parse().")
 
 class OneHotFeatureExtractor(FeatureExtractor):
-	def __init__(self, comment_length):
+	def __init__(self, comment_length, vocab=None):
 		FeatureExtractor.__init__(self)
 		self.comment_length = comment_length
+		self.vocab = vocab
 
 	# called for each comment 
 	def parse(self, words, vocab):
-		valid_words = [ word.lower() if word.lower() in vocab else DataSet.UNKNOWN_WORD for word in words ]
-		word_features = [ vocab[word] for word in valid_words ] #count of each word 
+		if len(vocab) == 0: vocab = self.vocab
+
+		valid_words = [ word.lower() if word.lower() in vocab else '<unknown_word>' for word in words ]
+		word_features = [ vocab[word] for word in valid_words ] # index of each word in comment in the vocab.
 		capital_features = [ self.capitalization_index(word) for word in words ]
 
 		#padding 

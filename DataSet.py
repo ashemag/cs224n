@@ -27,10 +27,12 @@ class DataSet:
 
 	# csv_filename = CSV file to read the comment data from
 	# feature_extractor = function that converts a list of words into a list of word embeddings
-	def __init__(self, csv_filename, feature_extractor, count=None, verbose=False):
+	def __init__(self, csv_filename, feature_extractor, count=None, test=False, verbose=False):
+		self.test = test
+
 		start_time = int(round(time.time() * 1000)) 
 		self.comments, self.vocab = self.load_data(csv_filename, count) 
-		self.vocab = DataSet.prune_vocabulary(self.vocab)
+		self.vocab = [] if self.test else DataSet.prune_vocabulary(self.vocab)
 		end_time = int(round(time.time() * 1000))
 
 		self.feature_extractor = feature_extractor
@@ -45,8 +47,6 @@ class DataSet:
 				(end_time-start_time) / 1000.0
 			)
 			print 'Vocabulary size = {0}'.format(len(self.vocab))
-			print "Most common vocabulary words = {0}".format(self.vocab.most_common(5))
-
 
 	# Splits the input |text| into a list of words.
 	# TODO: We may want to remove stop words and/or change this parsing in some way.
@@ -74,9 +74,12 @@ class DataSet:
 				if i == count: break
 
 				words = DataSet.split_into_words(row['comment_text']) #list 
-				labels = set([c for c in DataSet.CLASSES if row[c] == '1'])
+				labels = None if self.test else set([c for c in DataSet.CLASSES if row[c] == '1'])
 				comments.append(Comment(row['id'], words, labels))
-				vocab.update([word.lower() for word in words])
+				
+				if not self.test:
+					vocab.update([word.lower() for word in words])
+		
 		return comments, vocab
 
 	# Converts a set of |labels| into the appropriate "one-hot" vector (i.e. there will
@@ -90,10 +93,11 @@ class DataSet:
 	#     - Each element of x is a list of word embeddings for the words in the comment.
 	# (y) will be a list of numpy arrays with shape (# of classes, )
 	def get_data(self):
-		if self.x is None or self.y is None:
+		if self.x is None:
 			start_time = int(round(time.time() * 1000))
 			self.x = [ self.feature_extractor.parse(c.words, self.vocab) for c in self.comments ]
-			self.y = [ DataSet.to_label_vector(c.labels) for c in self.comments ]
+			if not self.test:
+				self.y = [ DataSet.to_label_vector(c.labels) for c in self.comments ]
 			end_time = int(round(time.time() * 1000))
 
 			if self.verbose:
@@ -110,10 +114,10 @@ class DataSet:
 # Debugging / Testing code
 if __name__ == "__main__":
 	feature_extractor = OneHotFeatureExtractor(100) 
-	data = DataSet(DataSet.TRAIN_CSV, feature_extractor, count=None, verbose=True)
+	data = DataSet(DataSet.TRAIN_CSV, feature_extractor, count=10000, verbose=True)
 	x, y = data.get_data()
 
-	#pickle.dump(data, open(filename, 'wb'))
-	pickle.dump(data, open('one-hot-dataset.pkl', 'wb'))
+	pickle.dump(data, open(filename, 'wb'))
+	#pickle.dump(data, open('one-hot-dataset.pkl', 'wb'))
 
 

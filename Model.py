@@ -12,7 +12,7 @@ class Model:
 	# Generates a list of batches for training all with a size |batch_size|
 	# (except for possibly the last batch)
 	@staticmethod
-	def generate_batches(self, x, y, batch_size):
+	def generate_batches(x, y, batch_size):
 		data = list(zip(x, y))
 		random.shuffle(data)
 		num_batches = int(math.ceil(len(x)/batch_size))

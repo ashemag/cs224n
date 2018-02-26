@@ -12,6 +12,10 @@ __pycache__/
 *$py.class
 *.pyc 
 
+#files 
+
+*.pkl 
+
 # C extensions
 *.so
 

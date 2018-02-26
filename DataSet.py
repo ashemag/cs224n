@@ -12,6 +12,7 @@ import sys, os
 from feature_extractor import *
 
 filename = 'one-hot-dataset-small.pkl'
+VOCAB_CAP = 20000
 
 class Comment: 
 	def __init__(self, example_id, words, labels, labels_vec = []):
@@ -59,7 +60,7 @@ class DataSet:
 	@staticmethod
 	def prune_vocabulary(vocab):
 		#new_vocab = sorted(list(set(vocab.elements())))
-		new_vocab = sorted([ word for word, count in vocab.most_common(20000) ])
+		new_vocab = sorted([ word for word, count in vocab.most_common(VOCAB_CAP) ])
 		new_vocab.append(DataSet.UNKNOWN_WORD)
 		return { word:index for index, word in enumerate(new_vocab) }
 	# Loads all of the comment data from the given |csv_filename|, only reads
@@ -118,6 +119,5 @@ if __name__ == "__main__":
 	x, y = data.get_data()
 
 	pickle.dump(data, open(filename, 'wb'))
-	#pickle.dump(data, open('one-hot-dataset.pkl', 'wb'))
 
 

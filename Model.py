@@ -6,6 +6,7 @@ import tensorflow as tf
 
 class Model:
 	def __init__(self, name):
+		print "Initialized Model..."
 		self.name = name
 		self.session = tf.Session()
 
@@ -18,6 +19,20 @@ class Model:
 		num_batches = int(math.ceil(len(x)/batch_size))
 		for i in range(num_batches):
 			yield tuple(zip(*data[batch_size*i:batch_size*(i+1)]))
+
+	#Writes Kaggle submission csv file 
+	@staticmethod
+	def write_submission(test_ids, preds, filename):
+		folder = "submissions"
+		filename = folder + "/" + filename 
+ 		with open(filename, 'wb') as csvfile: 
+			writer = csv.writer(csvfile)
+			fieldnames = ["id","toxic","severe_toxic","obscene","threat","insult","identity_hate"]
+			writer.writerow(fieldnames)
+			for i, comment_id in enumerate(self.test_ids): 
+				preds[i]
+				entry = [comment_id] + list(preds[i])
+				writer.writerow(entry)
 
 	# Generates a random sample from (x, y) of size |sample_size|
 	@staticmethod

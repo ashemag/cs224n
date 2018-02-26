@@ -1,87 +1,105 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 import numpy as np
 import tensorflow as tf
+from sklearn.metrics import roc_auc_score
 
 from feature_extractor import * 
-from dataset import *
-from model import *
+from DataSet import *
+from Model import *
 from util import Progbar
+import datetime
 
 class LSTM(Model):
-	def __init__(self, train_input, train_output, test_input, test_ids, n_classes=6, n_features=2, max_comment_length = 100):
+	def __init__(self, n_classes=6, n_features=2, max_comment_length=100):
+		Model.__init__(self, 'LSTMModel')
+
 		self.inputs_placeholder = tf.placeholder(tf.float32, [None, n_features, max_comment_length]) #[Batch Size, Sequence Length, Input Dimension]
 		self.labels_placeholder = tf.placeholder(tf.float32, [None, n_classes])
+		self.preds = tf.placeholder(tf.float32, [None, n_classes])
 		self.hidden_states = 24 
-		self.train_input = train_input
-		self.train_output = train_output
-		self.test_input = test_input
-		self.test_output = test_output
-		self.test_ids = test_ids 
+		self.n_classes = n_classes
 
-	def write_submission(self, preds, filename='submission.csv'):
-		with open(filename, 'wb') as csvfile: 
-			writer = csv.writer(csvfile)
-			fieldnames = ["id","toxic","severe_toxic","obscene","threat","insult","identity_hate"]
-			writer.writerow(fieldnames)
-			for i, comment_id in enumerate(self.test_ids): 
-				preds[i]
-				entry = [comment_id] + list(preds[i])
-				writer.writerow(entry)
+		self.auroc_scores = [tf.metrics.auc(self.labels_placeholder[:, klass], self.preds[:, klass]) for klass in range(self.n_classes)]
+		self.session.run(tf.global_variables_initializer())
+	
+	def get_scores(self, y, preds): 
+		y, preds = np.array(y), np.array(preds)
+		column = []
+		#add each column score 
+		for i in range(self.n_classes):
+			try:
+			    roc = roc_auc_score(y, preds)
+			    column.append(roc)
+			except ValueError:
+			    pass				
+		score = 0 if column == [] else np.mean(column)
+		print "SCORE: ", score 
 
+	def train(self, 
+			x_train, 
+			y_train, 
+			x_dev=None, 
+			y_dev=None, 
+			num_epochs=10, 
+			batch_size=100, 
+			lr=1e-3,
+			verbose=False):
 
-	def run_model(self): 
-		data, target = self.inputs_placeholder, self.labels_placeholder
-		cell = tf.nn.rnn_cell.LSTMCell(self.hidden_states,state_is_tuple=True)
-		output, state = tf.nn.dynamic_rnn(cell, data, dtype=tf.float32)
+		start_time = int(round(time.time() * 1000))
+		print 'Training LSTM Model "{0}" (started at {1})...'.format(self.name, start_time)
 		
+		cell = tf.nn.rnn_cell.LSTMCell(self.hidden_states,state_is_tuple=True)
+		output, state = tf.nn.dynamic_rnn(cell, self.inputs_placeholder, dtype=tf.float32)
+
 		#We transpose the output to switch batch size with sequence size
 		output = tf.transpose(output, [1, 0, 2])
 		last = tf.gather(output, int(output.get_shape()[0]) - 1)
 
-		weight = tf.Variable(tf.truncated_normal([self.hidden_states, int(target.get_shape()[1])]))
-		bias = tf.Variable(tf.constant(0.1, shape=[target.get_shape()[1]]))
+		weight = tf.Variable(tf.truncated_normal([self.hidden_states, int(self.labels_placeholder.get_shape()[1])]))
+		bias = tf.Variable(tf.constant(0.1, shape=[self.labels_placeholder.get_shape()[1]]))
+		optimizer = tf.train.AdamOptimizer()
 
 		prediction = tf.nn.softmax(tf.matmul(last, weight) + bias)
-		cross_entropy = -tf.reduce_sum(target * tf.log(tf.clip_by_value(prediction,1e-10,1.0)))
-
-		optimizer = tf.train.AdamOptimizer()
+		cross_entropy = -tf.reduce_sum(self.labels_placeholder * tf.log(tf.clip_by_value(prediction,1e-10,1.0)))
 		minimize = optimizer.minimize(cross_entropy)
-
-		mistakes = tf.not_equal(tf.argmax(target, 1), tf.argmax(prediction, 1))
-		error = tf.reduce_mean(tf.cast(mistakes, tf.float32))
-
-		init_op = tf.initialize_all_variables()
-		sess = tf.Session()
-		sess.run(init_op)
-
-		batch_size = 1000
-		no_of_batches = int(len(self.train_input)/batch_size)
-		epoch = 100 #Epoch 5000 error 28.9%
-		for i in range(epoch):
-		    ptr = 0
-		    for j in range(no_of_batches):
-		        inp, out = self.train_input[ptr:ptr+batch_size], self.train_output[ptr:ptr+batch_size]
-		        ptr+=batch_size
-		        sess.run(minimize,{data: inp, target: out})
-		    print "Epoch - ",str(i)
-		# incorrect = sess.run(error,{data: self.test_input, target: self.test_output})
-		# print('Epoch {:2d} error {:3.1f}%'.format(i + 1, 100 * incorrect))
 		
-		preds = sess.run(prediction, {data: self.test_input})
-		sess.close() 
-		self.write_submission(preds)
+		mistakes = tf.not_equal(tf.argmax(self.labels_placeholder, 1), tf.argmax(prediction, 1))
+		error = tf.reduce_mean(tf.cast(mistakes, tf.float32))
+		
+		self.session.run(tf.global_variables_initializer())
+
+		for epoch in range(num_epochs):
+			print 'Epoch #{0} out of {1}'.format(epoch+1, num_epochs)
+			num_batches = int(np.ceil(len(x_train)/batch_size))
+			progbar = Progbar(target=num_batches)
+
+			for batch, (x_batch, y_batch) in enumerate(Model.generate_batches(x_train, y_train, batch_size)):
+				self.session.run(minimize, {self.inputs_placeholder: x_batch, self.labels_placeholder: y_batch}) 
+
+		if x_dev is not None and y_dev is not None:
+			preds = self.session.run(prediction, {self.inputs_placeholder: x_dev})
+			self.get_scores(y_dev, preds)
+			
+		end_time = int(round(time.time() * 1000))
+		print 'Training LSTM Model took {0} seconds.'.format((end_time-start_time) / 1000.0)
+	
+	def close(self): 
+		self.session.close() 
 
 # Debugging / Testing code
 if __name__ == "__main__":
-	max_comment_length = 100 
-	feature_extractor = OneHotFeatureExtractor(max_comment_length)
-	
-	train_data = DataUtil(True, feature_extractor, verbose=True) 
-	train_input, train_output, ids = train_data.get_data()
-	
-	test_data = DataUtil(False, feature_extractor, verbose=True) 
-	test_input, test_output, ids = test_data.get_data()
-	print test_data == train_data
+	if True: 
+		max_comment_length = 100 
+		feature_extractor = OneHotFeatureExtractor(max_comment_length)
+		
+		train_data = DataSet(DataSet.TRAIN_CSV, feature_extractor, verbose=True) 
+		x, y = train_data.get_data()
+		DEV_SPLIT = len(y) / 2
+		x_train, x_dev = x[:DEV_SPLIT], x[DEV_SPLIT:]
+		y_train, y_dev = y[:DEV_SPLIT], y[DEV_SPLIT:]
 
-	example = LSTM(train_input, train_output, test_input, ids)
-	example.run_model() 
-
+		lstm = LSTM()
+		lstm.train(x_train, y_train, x_dev, y_dev)
+		lstm.close() 
+		

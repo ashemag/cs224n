@@ -13,7 +13,6 @@ __pycache__/
 *.pyc 
 
 #files 
-
 *.pkl 
 
 # C extensions

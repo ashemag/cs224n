@@ -161,7 +161,7 @@ class CNNModel(Model):
 
 # Debugging / Testing code
 if __name__ == "__main__":
-	train = False
+	train = True
 	seed = 13
 	np.random.seed(seed)
 	random.seed(seed)
@@ -196,7 +196,7 @@ if __name__ == "__main__":
 			csv_writer.writerow(['id','toxic','severe_toxic','obscene','threat','insult','identity_hate'])
 			
 			batch_size = 1000
-			num_batches = int(np.ceil(len(x)/batch_size))
+			num_batches = int(np.ceil(len(x)/float(batch_size)))
 			for i in range(num_batches):
 				if i % 10 == 0: print i
 				predictions = cnn.predict(x[batch_size*i:batch_size*(i+1)])

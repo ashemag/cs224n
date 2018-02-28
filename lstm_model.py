@@ -57,7 +57,6 @@ class LSTM(Model):
 			self.train_op = tf.train.AdamOptimizer(self.lr).minimize(self.loss)
 
 			self.session.run(tf.global_variables_initializer())
-			# tf.get_variable_scope().reuse_variables()
 	
 	def one_hot_embedding_matrix(self, size):
 		return np.concatenate((np.eye(size), np.zeros((1, size)))).astype(np.float32)
@@ -138,32 +137,31 @@ def plot(epochs, train_losses, title='Tuning Training Loss for LSTM'):
 
 # Debugging / Testing code
 if __name__ == "__main__":
-	if True: 
-		max_comment_length = 100 
-		feature_extractor = OneHotFeatureExtractor(max_comment_length)
-		
-		train_data = DataSet(DataSet.TRAIN_CSV, feature_extractor, count=100, verbose=True) 
-		x, y = train_data.get_data()
-		DEV_SPLIT = len(y) / 2
-		x_train, x_dev = x[:DEV_SPLIT], x[DEV_SPLIT:]
-		y_train, y_dev = y[:DEV_SPLIT], y[DEV_SPLIT:]
-		
-		num_epochs = 10
+	max_comment_length = 100 
+	feature_extractor = OneHotFeatureExtractor(max_comment_length)
+	
+	train_data = DataSet(DataSet.TRAIN_CSV, feature_extractor, count=100, verbose=True) 
+	x, y = train_data.get_data()
+	DEV_SPLIT = len(y) / 2
+	x_train, x_dev = x[:DEV_SPLIT], x[DEV_SPLIT:]
+	y_train, y_dev = y[:DEV_SPLIT], y[DEV_SPLIT:]
+	
+	num_epochs = 10
 
-		lstm = LSTM(len(train_data.vocab), name=str(num_epochs))
-		train_losses, epochs = lstm.train(x_train, y_train, num_epochs = num_epochs)
-		preds, scores = lstm.predict(x_dev, y_dev)
-		plot(epochs, train_losses)
-		
-		feature_extractor = OneHotFeatureExtractor(100, train_data.vocab)
-		del train_data.comments
-		test_data = DataSet(DataSet.TEST_CSV, feature_extractor, test=True, verbose=True) 
+	lstm = LSTM(len(train_data.vocab), name=str(num_epochs))
+	train_losses, epochs = lstm.train(x_train, y_train, num_epochs = num_epochs)
+	preds, scores = lstm.predict(x_dev, y_dev)
+	plot(epochs, train_losses)
+	
+	feature_extractor = OneHotFeatureExtractor(100, train_data.vocab)
+	del train_data.comments
+	test_data = DataSet(DataSet.TEST_CSV, feature_extractor, test=True, verbose=True) 
 
-		x, y = test_data.get_data()
+	x, y = test_data.get_data()
 
-		preds, scores = lstm.predict(x)
-		test_ids = [comment.example_id for comment in test_data.comments]
-		lstm.write_submission(test_ids, preds, "submissions/lstm.csv")
-		lstm.close() 
+	preds, scores = lstm.predict(x)
+	test_ids = [comment.example_id for comment in test_data.comments]
+	lstm.write_submission(test_ids, preds, "submissions/lstm.csv")
+	lstm.close() 
 
 		

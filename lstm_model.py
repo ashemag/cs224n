@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import numpy as np
-import tensorflow as tf
 from sklearn.metrics import roc_auc_score
 import matplotlib.pyplot as plt
+import tensorflow as tf
 
 from feature_extractor import * 
 from DataSet import *
@@ -18,11 +18,9 @@ class LSTM(Model):
 		with tf.variable_scope(name):
 			self.vocab_size = vocab_size
 			self.comment_length = comment_length
-			#self.inputs_placeholder = tf.placeholder(tf.float32, [None, n_features, max_comment_length]) #[Batch Size, Sequence Length, Input Dimension]
 			self.labels_placeholder = tf.placeholder(tf.float32, [None, n_classes])
 			self.hidden_states = 24 
 			self.n_classes = n_classes
-			self.prediction = None 
 
 			self.words_placeholder = tf.placeholder(tf.int32, shape=(None, self.comment_length), name='words')
 			self.capitals_placeholder = tf.placeholder(tf.int32, shape=(None, self.comment_length), name='capitals') 
@@ -39,8 +37,6 @@ class LSTM(Model):
 			capitals = tf.nn.embedding_lookup(self.E_capitals, self.capitals_placeholder)
 
 			inputs = tf.concat([words, capitals], 2)
-			print(inputs.get_shape())
-			# inputs = tf.reshape(tf.concat([words, capitals], 2), shape=(-1, 1, self.input_length, 1))
 			
 			cell = tf.nn.rnn_cell.LSTMCell(self.hidden_states,state_is_tuple=True, reuse = tf.AUTO_REUSE)
 			output, state = tf.nn.dynamic_rnn(cell, inputs, dtype=tf.float32)
@@ -63,8 +59,6 @@ class LSTM(Model):
 			)
 
 			self.lr = tf.placeholder(tf.float64, shape=())
-			#self.prediction = tf.nn.softmax(tf.matmul(last, weight) + bias)
-			#self.loss = -tf.reduce_sum(self.labels_placeholder * tf.log(tf.clip_by_value(self.prediction,1e-10,1.0)))
 			self.loss = tf.reduce_mean(-self.labels_placeholder*tf.log(tf.clip_by_value(self.prediction,1e-10,1.0)) -(1-self.labels_placeholder)*tf.log(tf.clip_by_value(1-self.prediction,1e-10,1.0)))
 			self.train_op = tf.train.AdamOptimizer(self.lr).minimize(self.loss)
 
@@ -108,13 +102,12 @@ class LSTM(Model):
 		num_batches = int(np.ceil(len(x_train)/batch_size))
 		progbar = Progbar(target=num_batches)
 
-		#train_loss = 0 
+		train_loss = 0 
 		for batch, (x_batch, y_batch) in enumerate(Model.generate_batches(x_train, y_train, batch_size)):
 			words, capitals = zip(*x_batch)
 			train_loss, _ = self.session.run((self.loss, self.train_op), {
 				self.words_placeholder: words,
 				self.capitals_placeholder: capitals,
-				#self.inputs_placeholder: x_batch, 
 				self.labels_placeholder: y_batch, 
 				self.lr: lr
 			})
@@ -144,7 +137,7 @@ class LSTM(Model):
 		return train_losses, epochs  
 
 	def predict(self, x_dev, y_dev=None): 
-		#preds = self.session.run(self.prediction, {self.inputs_placeholder: x_dev})
+		print "in predict"
 		words, capitals = zip(*x_dev)
 		preds = self.session.run(self.prediction, {
 			self.words_placeholder: words,
@@ -179,61 +172,32 @@ def plot(epochs, train_losses, title='Tuning Training Loss for LSTM'):
 
 # Debugging / Testing code
 if __name__ == "__main__":
-<<<<<<< HEAD
 	max_comment_length = 100 
 	feature_extractor = OneHotFeatureExtractor(max_comment_length)
 	
-	train_data = DataSet(DataSet.TRAIN_CSV, feature_extractor, count=100, verbose=True) 
+	train_data = DataSet(DataSet.TRAIN_CSV, feature_extractor, count = 100, verbose=True) 
 	x, y = train_data.get_data()
-	DEV_SPLIT = len(y) / 2
+	# DEV_SPLIT = 140000
+	DEV_SPLIT = len(y) / 2 
 	x_train, x_dev = x[:DEV_SPLIT], x[DEV_SPLIT:]
 	y_train, y_dev = y[:DEV_SPLIT], y[DEV_SPLIT:]
 	
-	num_epochs = 10
+	num_epochs = 1
 
 	lstm = LSTM(len(train_data.vocab), name=str(num_epochs))
-	train_losses, epochs = lstm.train(x_train, y_train, num_epochs = num_epochs)
+	train_losses, epochs = lstm.train(x_train, y_train, x_dev, y_dev, num_epochs = num_epochs)
 	preds, scores = lstm.predict(x_dev, y_dev)
 	plot(epochs, train_losses)
 	
 	feature_extractor = OneHotFeatureExtractor(100, train_data.vocab)
 	del train_data.comments
 	test_data = DataSet(DataSet.TEST_CSV, feature_extractor, test=True, verbose=True) 
-=======
-	if True: 
-		max_comment_length = 100 
-		feature_extractor = OneHotFeatureExtractor(max_comment_length)
-		
-		train_data = DataSet(DataSet.TRAIN_CSV, feature_extractor, count=None, verbose=True) 
-		x, y = train_data.get_data()
-		DEV_SPLIT = 140000#len(y) / 2
-		x_train, x_dev = x[:DEV_SPLIT], x[DEV_SPLIT:]
-		y_train, y_dev = y[:DEV_SPLIT], y[DEV_SPLIT:]
-		
-		num_epochs = 2
-
-		lstm = LSTM(len(train_data.vocab), name=str(num_epochs))
-		train_losses, epochs = lstm.train(x_train, y_train, x_dev, y_dev, num_epochs = num_epochs)
-		preds, scores = lstm.predict(x_dev, y_dev)
-		plot(epochs, train_losses)
-		
-		feature_extractor = OneHotFeatureExtractor(100, train_data.vocab)
-		del train_data.comments
-		test_data = DataSet(DataSet.TEST_CSV, feature_extractor, test=True, verbose=True) 
->>>>>>> 336dfe3e9ae6760294cb53e39a35183991c85c21
-
+	
 	x, y = test_data.get_data()
-
-<<<<<<< HEAD
+	print "exiting processing data"
 	preds, scores = lstm.predict(x)
-	test_ids = [comment.example_id for comment in test_data.comments]
-	lstm.write_submission(test_ids, preds, "submissions/lstm.csv")
+	# test_ids = [comment.example_id for comment in test_data.comments]
+	# lstm.write_submission(test_ids, preds, "submissions/lstm.csv")
+	print "before close"
 	lstm.close() 
-
-=======
-		preds, scores = lstm.predict(x)
-		test_ids = [comment.example_id for comment in test_data.comments]
-		lstm.write_submission(test_ids, preds, "submissions/lstm.csv")
-		lstm.close()
->>>>>>> 336dfe3e9ae6760294cb53e39a35183991c85c21
-		
+	print "past close"

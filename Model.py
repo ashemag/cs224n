@@ -55,9 +55,9 @@ class Model:
 	def one_hot_embedding_matrix(size):
 		return np.concatenate((np.eye(size), np.zeros((1, size)))).astype(np.float32)
 
-	#generate embeddings
-	def generate_embeddings(self): 
-		E_words = tf.get_variable('E_words', shape=(self.vocab_size, self.embedding_size), initializer=tf.contrib.layers.xavier_initializer()) 
+	#generate random or pretrained embeddings
+	def generate_embeddings(self, embeddings_initializer=tf.contrib.layers.xavier_initializer()): 
+		E_words = tf.get_variable('E_words', shape=(self.vocab_size, self.embedding_size), initializer=embeddings_initializer) 
 		E_words = tf.concat([E_words, np.zeros((1, self.embedding_size)).astype(np.float32)], axis=0)
 		E_capitals = tf.constant(self.one_hot_embedding_matrix(self.capitalization_size), name='E_capitals')
 		words = tf.nn.embedding_lookup(E_words, self.words_placeholder)

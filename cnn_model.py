@@ -4,9 +4,9 @@ import numpy as np
 import random
 import tensorflow as tf
 
-from DataSet import *
+from dataset import *
 from feature_extractor import *
-from Model import *
+from model import *
 from util import Progbar
 
 class CNNModel(Model):

@@ -7,7 +7,7 @@ import tensorflow as tf
 
 from feature_extractor import * 
 from dataset import *
-from Model import *
+from model import *
 from util import Progbar
 import datetime
 

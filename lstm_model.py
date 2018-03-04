@@ -6,16 +6,16 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 
 from feature_extractor import * 
-from DataSet import *
+from dataset import *
 from Model import *
 from util import Progbar
 import datetime
 
 class LSTM(Model):
-	def __init__(self, vocab_size, name, n_classes=6, n_features=2, comment_length=100):
+	def __init__(self, vocab_size, n_classes=6, n_features=2, comment_length=100):
 		Model.__init__(self, 'LSTMModel')
-		scope = type(self).__name__
-		with tf.variable_scope(name):
+		
+		with tf.variable_scope(type(self).__name__):
 			self.vocab_size = vocab_size
 			self.comment_length = comment_length
 			self.labels_placeholder = tf.placeholder(tf.float32, [None, n_classes])
@@ -27,14 +27,7 @@ class LSTM(Model):
 
 			self.embedding_size = 200
 			self.capitalization_size = 3
-			self.word_vector_size = self.embedding_size + self.capitalization_size
-			self.input_length = self.word_vector_size * self.comment_length
-
-			self.E_words = tf.get_variable('E_words', shape=(self.vocab_size, self.embedding_size), initializer=tf.contrib.layers.xavier_initializer())
-			self.E_words = tf.concat([self.E_words, np.zeros((1, self.embedding_size)).astype(np.float32)], axis=0)
-			self.E_capitals = tf.constant(self.one_hot_embedding_matrix(self.capitalization_size), name='E_capitals')#tf.get_variable('E_capitals', initializer=self.one_hot_embedding_matrix(self.capitalization_size))
-			words = tf.nn.embedding_lookup(self.E_words, self.words_placeholder)
-			capitals = tf.nn.embedding_lookup(self.E_capitals, self.capitals_placeholder)
+			words, capitals = Model.generate_embeddings(self)
 
 			inputs = tf.concat([words, capitals], 2)
 			
@@ -63,40 +56,8 @@ class LSTM(Model):
 			self.train_op = tf.train.AdamOptimizer(self.lr).minimize(self.loss)
 
 			self.auroc_scores = [tf.metrics.auc(self.labels_placeholder[:, klass], self.prediction[:, klass]) for klass in range(self.n_classes)]
-
 			self.session.run(tf.global_variables_initializer())
 	
-	def one_hot_embedding_matrix(self, size):
-		return np.concatenate((np.eye(size), np.zeros((1, size)))).astype(np.float32)
-
-	def get_scores(self, y, preds): 
-		y, preds = np.array(y), np.array(preds)
-		column = []
-		#add each column score 
-		for i in range(self.n_classes):
-			try:
-			    roc = roc_auc_score(y, preds)
-			    column.append(roc)
-			except ValueError:
-			    pass				
-		score = 0 if column == [] else np.mean(column)
-		print "SCORE: ", score 
-		return score 
-
-	def compute_auroc_scores(self, x_data, y_data):
-		self.session.run(tf.local_variables_initializer())
-		scores = [self.auroc_scores[klass][0] for klass in range(self.n_classes)]
-		update_ops = [self.auroc_scores[klass][1] for klass in range(self.n_classes)]
-
-		words, capitals = zip(*x_data)
-		self.session.run(update_ops, feed_dict = {
-			self.words_placeholder: words,
-			self.capitals_placeholder: capitals,
-			self.labels_placeholder: y_data
-		})
-
-		return self.session.run(scores)
-
 	def train_helper(self, epoch, num_epochs, x_train, y_train, batch_size, lr): 
 		print 'Epoch #{0} out of {1}'.format(epoch+1, num_epochs)
 		num_batches = int(np.ceil(len(x_train)/batch_size))
@@ -112,8 +73,8 @@ class LSTM(Model):
 				self.lr: lr
 			})
 
-			mean_auroc = 0#np.mean(self.compute_auroc_scores(x_batch, y_batch))
-			progbar.update(batch + 1, [("Train Loss", train_loss), ("Mean AUROC", mean_auroc)])	
+			mean_auroc = np.mean(self.compute_auroc_scores(x_batch, y_batch))
+			progbar.update(batch + 1, [("Train Loss", train_loss, "Mean Score", mean_auroc)])	
 		return train_loss
 	
 	def train(self, x_train, y_train, x_dev, y_dev, num_epochs=10, batch_size=100, lr=1e-4): 
@@ -127,7 +88,7 @@ class LSTM(Model):
 			train_losses.append(train_loss)
 			epochs.append(epoch)
 
-			mean_auroc = np.mean(self.compute_auroc_scores(x_dev, y_dev))
+			mean_auroc = np.mean(Model.compute_auroc_scores(self, x_dev, y_dev))
 			print "Dev Set Mean AUROC: {0}\n".format(mean_auroc)
 
 
@@ -136,8 +97,19 @@ class LSTM(Model):
 		print 'Training LSTM Model took {0} seconds.'.format((end_time-start_time) / 1000.0)
 		return train_losses, epochs  
 
-	def predict(self, x_dev, y_dev=None): 
-		print "in predict"
+	def predict(self, comments, x_dev, y_dev=None, batch_size=100, filename="submissions/lstm_model.csv"): 
+		with open(filename, 'wb') as csv_file:
+			csv_writer = csv.writer(csv_file)
+			csv_writer.writerow(['id','toxic','severe_toxic','obscene','threat','insult','identity_hate'])
+			num_batches = int(np.ceil(len(x)/float(batch_size)))
+			for i in range(num_batches):
+				predictions, scores = self.predict_helper(x_dev[batch_size*i:batch_size*(i+1)], y_dev)
+				for j in range(len(predictions)):
+					row = [comments[batch_size*i+j].example_id]
+					row.extend(predictions[j])
+					csv_writer.writerow(row)
+
+	def predict_helper(self, x_dev, y_dev=None): 
 		words, capitals = zip(*x_dev)
 		preds = self.session.run(self.prediction, {
 			self.words_placeholder: words,
@@ -150,54 +122,28 @@ class LSTM(Model):
 	
 	def close(self): 
 		self.session.close() 
-	
-	def write_submission(self, test_ids, preds, filename):
- 		with open(filename, 'wb') as csvfile: 
-			writer = csv.writer(csvfile)
-			fieldnames = ["id","toxic","severe_toxic","obscene","threat","insult","identity_hate"]
-			writer.writerow(fieldnames)
-			for i, comment_id in enumerate(test_ids): 
-				preds[i]
-				entry = [comment_id] + list(preds[i])
-				writer.writerow(entry)
-
-def plot(epochs, train_losses, title='Tuning Training Loss for LSTM'): 
-	fig = plt.figure()
-	ax = plt.subplot(111)
-	plt.plot(epochs, train_losses, color = 'b')
-	plt.title(title)
-	plt.xlabel('Epoch')
-	plt.ylabel('Training Loss')
-	fig.savefig('submissions/lstm_training_loss.png')
 
 # Debugging / Testing code
 if __name__ == "__main__":
 	max_comment_length = 100 
 	feature_extractor = OneHotFeatureExtractor(max_comment_length)
 	
-	train_data = DataSet(DataSet.TRAIN_CSV, feature_extractor, count = 100, verbose=True) 
+	train_data = DataSet(DataSet.TRAIN_CSV, feature_extractor, count=100, verbose=True) 
 	x, y = train_data.get_data()
 	# DEV_SPLIT = 140000
-	DEV_SPLIT = len(y) / 2 
+	DEV_SPLIT = len(y) / 2
 	x_train, x_dev = x[:DEV_SPLIT], x[DEV_SPLIT:]
 	y_train, y_dev = y[:DEV_SPLIT], y[DEV_SPLIT:]
 	
 	num_epochs = 1
 
-	lstm = LSTM(len(train_data.vocab), name=str(num_epochs))
+	lstm = LSTM(len(train_data.vocab))
 	train_losses, epochs = lstm.train(x_train, y_train, x_dev, y_dev, num_epochs = num_epochs)
-	preds, scores = lstm.predict(x_dev, y_dev)
-	plot(epochs, train_losses)
 	
 	feature_extractor = OneHotFeatureExtractor(100, train_data.vocab)
 	del train_data.comments
-	test_data = DataSet(DataSet.TEST_CSV, feature_extractor, test=True, verbose=True) 
-	
+	test_data = DataSet(DataSet.TEST_CSV, feature_extractor, test=True, verbose=True) 	
 	x, y = test_data.get_data()
-	print "exiting processing data"
-	preds, scores = lstm.predict(x)
-	# test_ids = [comment.example_id for comment in test_data.comments]
-	# lstm.write_submission(test_ids, preds, "submissions/lstm.csv")
-	print "before close"
+	lstm.predict(test_data.comments, x)
 	lstm.close() 
-	print "past close"
+

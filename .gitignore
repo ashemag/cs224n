@@ -5,6 +5,7 @@ train.csv
 train.csv.zip
 sample_submission.csv
 submission.csv 
+glove.twitter.27B
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -14,6 +15,7 @@ __pycache__/
 
 #files 
 *.pkl 
+*.csv
 
 # C extensions
 *.so

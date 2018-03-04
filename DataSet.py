@@ -63,6 +63,7 @@ class DataSet:
 		new_vocab = sorted([ word for word, count in vocab.most_common(VOCAB_CAP) ])
 		new_vocab.append(DataSet.UNKNOWN_WORD)
 		return { word:index for index, word in enumerate(new_vocab) }
+		
 	# Loads all of the comment data from the given |csv_filename|, only reads
 	# the first |count| comments from the dataset (for debugging)
 	def load_data(self, csv_filename, count=None):

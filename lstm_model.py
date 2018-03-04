@@ -12,11 +12,12 @@ from util import Progbar
 import datetime
 
 class LSTM(Model):
-	def __init__(self, vocab_size, comments, n_classes=6, n_features=2, comment_length=100):
+	def __init__(self, vocab, comments, n_classes=6, n_features=2, comment_length=100):
 		Model.__init__(self, 'LSTMModel')
 		
 		with tf.variable_scope(type(self).__name__):
-			self.vocab_size = vocab_size
+			self.vocab_size = len(vocab)
+			self.vocab = vocab 
 			self.comments = comments 
 			self.comment_length = comment_length
 			self.labels_placeholder = tf.placeholder(tf.float32, [None, n_classes])
@@ -25,7 +26,7 @@ class LSTM(Model):
 
 			self.words_placeholder = tf.placeholder(tf.int32, shape=(None, self.comment_length), name='words')
 			self.capitals_placeholder = tf.placeholder(tf.int32, shape=(None, self.comment_length), name='capitals') 
-			self.inputs_placeholder = tf.placeholder(tf.int32, shape=(None, n_features, self.comment_length), name='inputs') 
+			self.inputs_placeholder = tf.placeholder(tf.int32, shape=(None, self.comment_length), name='inputs') 
 
 			self.embedding_size = 200
 			self.capitalization_size = 3
@@ -150,7 +151,7 @@ if __name__ == "__main__":
 	
 	num_epochs = 1
 
-	lstm = LSTM(len(train_data.vocab), train_data.comments)
+	lstm = LSTM(train_data.vocab, train_data.comments)
 	train_losses, epochs = lstm.train(x_train, y_train, x_dev, y_dev, num_epochs = num_epochs)
 	
 	feature_extractor = OneHotFeatureExtractor(100, train_data.vocab)

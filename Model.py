@@ -56,9 +56,9 @@ class Model:
 		return np.concatenate((np.eye(size), np.zeros((1, size)))).astype(np.float32)
 
 	@staticmethod
-	def create_twitter_embeddings(comments): 
+	def create_twitter_embeddings(vocab): 
 		embeddings_index = {}
-		print "=== Processing Glove Twitter embeddings ==="
+		# print "=== Processing Glove Twitter embeddings ==="
 		# with open('glove.twitter.27B/glove.twitter.27B.200d.txt') as f:
 		# 	for line in f:
 		# 		values = line.split(' ')
@@ -66,23 +66,34 @@ class Model:
 		# 		embedding = np.asarray(values[1:], dtype='float64')
 		# 		embeddings_index[word] = embedding
 		# print "=== Glove Twitter embeddings processed ==="
-		embedding_dim = 200 
-		embed_comments = [] # Contains the 'average' embedding for each comment
-		for comment in comments:
-			avg_embed = np.zeros(embedding_dim) 
-			for word in comment.words:
-				embed = embeddings_index.get(word)
-				if embed is not None:
-					avg_embed += embed 
-			embed_comments.append(avg_embed/len(comment.words))
-		print "=== Average Embedding for each comment found ==="
-		embed_comments =  np.array(embed_comments) #vocab size x embedding size 
-		return embed_comments
+		embeddings = []
+		for word in vocab: 
+			embed = embeddings_index.get(word)
+			if embed is not None: 
+				embeddings.append(embed)
+			else: 
+				embeddings.append([0] * 200)
+		return embeddings 
+		# embedding_dim = 200 
+		# embed_comments = [] # Contains the 'average' embedding for each comment
+		# for comment in comments:
+		# 	avg_embed = np.zeros(embedding_dim) 
+		# 	for word in comment.words:
+		# 		embed = embeddings_index.get(word)
+		# 		if embed is not None:
+		# 			avg_embed += embed 
+		# 	embed_comments.append(avg_embed/len(comment.words))
+		# print "=== Average Embedding for each comment found ==="
+		# embed_comments =  np.array(embed_comments) #comment size x embedding size 
+		# return embed_comments
+		
+
 
 	#generate random embeddings
 	def generate_pretrained_embeddings(self): 
-		embeddings_initializer = self.create_twitter_embeddings(self.comments)
+		embeddings_initializer = self.create_twitter_embeddings(self.vocab)
 		E_inputs = tf.get_variable('E_inputs', initializer=embeddings_initializer) #shape=(self.vocab_size, self.embedding_size)
+		E_inputs = tf.cast(E_inputs, tf.float64)
 		E_inputs = tf.concat([E_inputs, np.zeros((1, self.embedding_size)).astype(np.float64)], axis=0)#what is this? 
 		inputs = tf.nn.embedding_lookup(E_inputs, self.inputs_placeholder)
 		inputs = tf.cast(inputs,tf.float32)

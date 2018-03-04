@@ -43,10 +43,10 @@ class Model:
 		#add each column score 
 		for i in range(self.n_classes):
 			try:
-			    roc = roc_auc_score(y, preds)
-			    column.append(roc)
+				roc = roc_auc_score(y, preds)
+				column.append(roc)
 			except ValueError:
-			    pass				
+				pass				
 		score = 0 if column == [] else np.mean(column)
 		print "SCORE: ", score 
 		return score 
@@ -55,8 +55,42 @@ class Model:
 	def one_hot_embedding_matrix(size):
 		return np.concatenate((np.eye(size), np.zeros((1, size)))).astype(np.float32)
 
-	#generate random or pretrained embeddings
-	def generate_embeddings(self, embeddings_initializer=tf.contrib.layers.xavier_initializer()): 
+	@staticmethod
+	def create_twitter_embeddings(comments): 
+		embeddings_index = {}
+		print "=== Processing Glove Twitter embeddings ==="
+		# with open('glove.twitter.27B/glove.twitter.27B.200d.txt') as f:
+		# 	for line in f:
+		# 		values = line.split(' ')
+		# 		word = values[0]
+		# 		embedding = np.asarray(values[1:], dtype='float64')
+		# 		embeddings_index[word] = embedding
+		# print "=== Glove Twitter embeddings processed ==="
+		embedding_dim = 200 
+		embed_comments = [] # Contains the 'average' embedding for each comment
+		for comment in comments:
+			avg_embed = np.zeros(embedding_dim) 
+			for word in comment.words:
+				embed = embeddings_index.get(word)
+				if embed is not None:
+					avg_embed += embed 
+			embed_comments.append(avg_embed/len(comment.words))
+		print "=== Average Embedding for each comment found ==="
+		embed_comments =  np.array(embed_comments) #vocab size x embedding size 
+		return embed_comments
+
+	#generate random embeddings
+	def generate_pretrained_embeddings(self): 
+		embeddings_initializer = self.create_twitter_embeddings(self.comments)
+		E_inputs = tf.get_variable('E_inputs', initializer=embeddings_initializer) #shape=(self.vocab_size, self.embedding_size)
+		E_inputs = tf.concat([E_inputs, np.zeros((1, self.embedding_size)).astype(np.float64)], axis=0)#what is this? 
+		inputs = tf.nn.embedding_lookup(E_inputs, self.inputs_placeholder)
+		inputs = tf.cast(inputs,tf.float32)
+		print inputs.shape  
+		return inputs 
+
+	#generate random embeddings
+	def generate_random_embeddings(self, embeddings_initializer=tf.contrib.layers.xavier_initializer()): 
 		E_words = tf.get_variable('E_words', shape=(self.vocab_size, self.embedding_size), initializer=embeddings_initializer) 
 		E_words = tf.concat([E_words, np.zeros((1, self.embedding_size)).astype(np.float32)], axis=0)
 		E_capitals = tf.constant(self.one_hot_embedding_matrix(self.capitalization_size), name='E_capitals')

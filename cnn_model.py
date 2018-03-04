@@ -158,7 +158,6 @@ class CNNModel(Model):
 		words, capitals = zip(*x)
 		return self.session.run(self.y_hat, feed_dict={self.words_placeholder: words, self.capitals_placeholder: capitals})
 
-
 # Debugging / Testing code
 if __name__ == "__main__":
 	train = True

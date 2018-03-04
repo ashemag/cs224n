@@ -12,11 +12,12 @@ from util import Progbar
 import datetime
 
 class LSTM(Model):
-	def __init__(self, vocab_size, n_classes=6, n_features=2, comment_length=100):
+	def __init__(self, vocab_size, comments, n_classes=6, n_features=2, comment_length=100):
 		Model.__init__(self, 'LSTMModel')
 		
 		with tf.variable_scope(type(self).__name__):
 			self.vocab_size = vocab_size
+			self.comments = comments 
 			self.comment_length = comment_length
 			self.labels_placeholder = tf.placeholder(tf.float32, [None, n_classes])
 			self.hidden_states = 24 
@@ -24,13 +25,17 @@ class LSTM(Model):
 
 			self.words_placeholder = tf.placeholder(tf.int32, shape=(None, self.comment_length), name='words')
 			self.capitals_placeholder = tf.placeholder(tf.int32, shape=(None, self.comment_length), name='capitals') 
+			self.inputs_placeholder = tf.placeholder(tf.int32, shape=(None, n_features, self.comment_length), name='inputs') 
 
 			self.embedding_size = 200
 			self.capitalization_size = 3
-			words, capitals = Model.generate_embeddings(self)
 
-			inputs = tf.concat([words, capitals], 2)
-			
+			#Random embeddings: Comment out to avoid duplicate TF variables 
+			# words, capitals = Model.generate_random_embeddings(self)
+			# inputs = tf.concat([words, capitals], 2)
+
+			#Pretrained embeddings 
+			inputs = Model.generate_pretrained_embeddings(self)
 			cell = tf.nn.rnn_cell.LSTMCell(self.hidden_states,state_is_tuple=True, reuse = tf.AUTO_REUSE)
 			output, state = tf.nn.dynamic_rnn(cell, inputs, dtype=tf.float32)
 
@@ -66,14 +71,17 @@ class LSTM(Model):
 		train_loss = 0 
 		for batch, (x_batch, y_batch) in enumerate(Model.generate_batches(x_train, y_train, batch_size)):
 			words, capitals = zip(*x_batch)
+		
 			train_loss, _ = self.session.run((self.loss, self.train_op), {
-				self.words_placeholder: words,
-				self.capitals_placeholder: capitals,
+				# self.words_placeholder: words,
+				# self.capitals_placeholder: capitals,
+				self.inputs_placeholder: x_batch, 
 				self.labels_placeholder: y_batch, 
 				self.lr: lr
 			})
 
-			mean_auroc = np.mean(self.compute_auroc_scores(x_batch, y_batch))
+			# mean_auroc = np.mean(self.compute_auroc_scores(x_batch, y_batch))
+			mean_auroc = 0 
 			progbar.update(batch + 1, [("Train Loss", train_loss, "Mean Score", mean_auroc)])	
 		return train_loss
 	
@@ -88,8 +96,8 @@ class LSTM(Model):
 			train_losses.append(train_loss)
 			epochs.append(epoch)
 
-			mean_auroc = np.mean(Model.compute_auroc_scores(self, x_dev, y_dev))
-			print "Dev Set Mean AUROC: {0}\n".format(mean_auroc)
+			# mean_auroc = np.mean(Model.compute_auroc_scores(self, x_dev, y_dev))
+			# print "Dev Set Mean AUROC: {0}\n".format(mean_auroc)
 
 
 		end_time = int(round(time.time() * 1000))
@@ -111,9 +119,14 @@ class LSTM(Model):
 
 	def predict_helper(self, x_dev, y_dev=None): 
 		words, capitals = zip(*x_dev)
+		print "Predict helper\n"
+		print np.array(x_dev).shape 
+		print self.inputs_placeholder.shape 
+
 		preds = self.session.run(self.prediction, {
-			self.words_placeholder: words,
-			self.capitals_placeholder: capitals
+			# self.words_placeholder: words,
+			# self.capitals_placeholder: capitals
+			self.inputs_placeholder: np.array(x_dev), 
 		})
 		scores = None 
 		if y_dev is not None: 
@@ -137,7 +150,7 @@ if __name__ == "__main__":
 	
 	num_epochs = 1
 
-	lstm = LSTM(len(train_data.vocab))
+	lstm = LSTM(len(train_data.vocab), train_data.comments)
 	train_losses, epochs = lstm.train(x_train, y_train, x_dev, y_dev, num_epochs = num_epochs)
 	
 	feature_extractor = OneHotFeatureExtractor(100, train_data.vocab)

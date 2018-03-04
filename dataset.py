@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import collections 
-import cPickle as pickle
 import csv
 import numpy as np
 import re
@@ -42,12 +41,12 @@ class DataSet:
 		self.y = None
 		
 		if self.verbose:
-			print 'Loaded {0} comments from "{1}" in {2} seconds.'.format(
+			print('Loaded {0} comments from "{1}" in {2} seconds.'.format(
 				len(self.comments),
 				csv_filename,
 				(end_time-start_time) / 1000.0
-			)
-			print 'Vocabulary size = {0}'.format(len(self.vocab))
+			))
+			print('Vocabulary size = {0}'.format(len(self.vocab)))
 
 	# Splits the input |text| into a list of words.
 	# TODO: We may want to remove stop words and/or change this parsing in some way.
@@ -103,7 +102,7 @@ class DataSet:
 			end_time = int(round(time.time() * 1000))
 
 			if self.verbose:
-				print 'Processing data (int get_data()) took {0} seconds.'.format((end_time-start_time) / 1000.0)
+				print('Processing data (int get_data()) took {0} seconds.'.format((end_time-start_time) / 1000.0))
 
 		return self.x, self.y
 
@@ -118,7 +117,4 @@ if __name__ == "__main__":
 	feature_extractor = OneHotFeatureExtractor(100) 
 	data = DataSet(DataSet.TRAIN_CSV, feature_extractor, count=10000, verbose=True)
 	x, y = data.get_data()
-
-	pickle.dump(data, open(filename, 'wb'))
-
 

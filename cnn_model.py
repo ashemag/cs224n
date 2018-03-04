@@ -114,11 +114,11 @@ class CNNModel(Model):
 					verbose=False):
 
 		start_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-		print 'Training Model "{0}" (started at {1})...'.format(self.name, start_time)
+		print('Training Model "{0}" (started at {1})...'.format(self.name, start_time))
 		
 		max_auroc = 0
 		for epoch in range(num_epochs):
-			print 'Epoch #{0} out of {1}'.format(epoch+1, num_epochs)
+			print('Epoch #{0} out of {1}'.format(epoch+1, num_epochs))
 			num_batches = int(np.ceil(len(x_train)/batch_size))
 			progbar = Progbar(target=num_batches)
 
@@ -150,9 +150,9 @@ class CNNModel(Model):
 					self.save("models/{0}/{0}".format(self.name))
 					marker = "*"
 				
-				print 'Dev Loss: {0}'.format(dev_loss)
-				print 'AUROC Scores: {0}'.format(auroc_scores)
-				print 'Mean AUROC Score: {0} {1}\n'.format(mean_auroc, marker)
+				print('Dev Loss: {0}'.format(dev_loss))
+				print('AUROC Scores: {0}'.format(auroc_scores))
+				print('Mean AUROC Score: {0} {1}\n'.format(mean_auroc, marker))
 
 	def predict(self, x):
 		words, capitals = zip(*x)
@@ -197,7 +197,7 @@ if __name__ == "__main__":
 			batch_size = 1000
 			num_batches = int(np.ceil(len(x)/float(batch_size)))
 			for i in range(num_batches):
-				if i % 10 == 0: print i
+				if i % 10 == 0: print(i)
 				predictions = cnn.predict(x[batch_size*i:batch_size*(i+1)])
 				for j in range(len(predictions)):
 					row = [test_dataset.comments[batch_size*i+j].example_id]

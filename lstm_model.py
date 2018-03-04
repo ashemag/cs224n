@@ -7,7 +7,7 @@ import tensorflow as tf
 
 from feature_extractor import * 
 from dataset import *
-from model import *
+from Model import *
 from util import Progbar
 import datetime
 
@@ -32,12 +32,13 @@ class LSTM(Model):
 			self.capitalization_size = 3
 
 			#Random embeddings: Comment out to avoid duplicate TF variables 
-			# words, capitals = Model.generate_random_embeddings(self)
-			# inputs = tf.concat([words, capitals], 2)
+			# words, capitals = self.generate_random_embeddings()
 
 			#Pretrained embeddings 
-			inputs = Model.generate_pretrained_embeddings(self)
-			cell = tf.nn.rnn_cell.LSTMCell(self.hidden_states,state_is_tuple=True, reuse = tf.AUTO_REUSE)
+			words, capitals = self.generate_pretrained_embeddings(self.vocab)
+
+			inputs = tf.concat([words, capitals], 2)
+			cell = tf.contrib.rnn.LSTMCell(self.hidden_states, state_is_tuple=True, reuse=None)
 			output, state = tf.nn.dynamic_rnn(cell, inputs, dtype=tf.float32)
 
 			#We transpose the output to switch batch size with sequence size
@@ -61,11 +62,11 @@ class LSTM(Model):
 			self.loss = tf.reduce_mean(-self.labels_placeholder*tf.log(tf.clip_by_value(self.prediction,1e-10,1.0)) -(1-self.labels_placeholder)*tf.log(tf.clip_by_value(1-self.prediction,1e-10,1.0)))
 			self.train_op = tf.train.AdamOptimizer(self.lr).minimize(self.loss)
 
-			self.auroc_scores = [tf.metrics.auc(self.labels_placeholder[:, klass], self.prediction[:, klass]) for klass in range(self.n_classes)]
+			#self.auroc_scores = [tf.metrics.auc(self.labels_placeholder[:, klass], self.prediction[:, klass]) for klass in range(self.n_classes)]
 			self.session.run(tf.global_variables_initializer())
 	
 	def train_helper(self, epoch, num_epochs, x_train, y_train, batch_size, lr): 
-		print 'Epoch #{0} out of {1}'.format(epoch+1, num_epochs)
+		print('Epoch #{0} out of {1}'.format(epoch+1, num_epochs))
 		num_batches = int(np.ceil(len(x_train)/batch_size))
 		progbar = Progbar(target=num_batches)
 
@@ -74,21 +75,20 @@ class LSTM(Model):
 			words, capitals = zip(*x_batch)
 		
 			train_loss, _ = self.session.run((self.loss, self.train_op), {
-				# self.words_placeholder: words,
-				# self.capitals_placeholder: capitals,
-				self.inputs_placeholder: x_batch, 
+				self.words_placeholder: words,
+				self.capitals_placeholder: capitals,
 				self.labels_placeholder: y_batch, 
 				self.lr: lr
 			})
 
-			# mean_auroc = np.mean(self.compute_auroc_scores(x_batch, y_batch))
+			#mean_auroc = np.mean(self.compute_auroc_scores(x_batch, y_batch))
 			mean_auroc = 0 
-			progbar.update(batch + 1, [("Train Loss", train_loss, "Mean Score", mean_auroc)])	
+			progbar.update(batch + 1, [("Train Loss", train_loss), ("Mean AUROC", mean_auroc)])	
 		return train_loss
 	
 	def train(self, x_train, y_train, x_dev, y_dev, num_epochs=10, batch_size=100, lr=1e-4): 
 		start_time = int(round(time.time() * 1000))
-		print 'Training LSTM Model "{0}" (started at {1})...'.format(self.name, start_time)
+		print('Training LSTM Model "{0}" (started at {1})...'.format(self.name, start_time))
 		
 		train_losses = []
 		epochs = []
@@ -97,42 +97,38 @@ class LSTM(Model):
 			train_losses.append(train_loss)
 			epochs.append(epoch)
 
-			# mean_auroc = np.mean(Model.compute_auroc_scores(self, x_dev, y_dev))
-			# print "Dev Set Mean AUROC: {0}\n".format(mean_auroc)
+			words, capitals = zip(*x_dev)
+			dev_loss = self.session.run(self.loss, {
+				self.words_placeholder: words,
+				self.capitals_placeholder: capitals,
+				self.labels_placeholder: y_dev, 
+			})
 
+			mean_auroc = np.mean(self.compute_auroc_scores(x_dev, y_dev))
+			print("Dev Set - Loss: {0:.4f}, Mean AUROC: {1:.4f}\n".format(dev_loss, mean_auroc))
 
 		end_time = int(round(time.time() * 1000))
-		
-		print 'Training LSTM Model took {0} seconds.'.format((end_time-start_time) / 1000.0)
+		print('Training LSTM Model took {0} seconds.'.format((end_time-start_time) / 1000.0))
 		return train_losses, epochs  
 
-	def predict(self, comments, x_dev, y_dev=None, batch_size=100, filename="submissions/lstm_model.csv"): 
+	def predict(self, x):
+		words, capitals = zip(*x)
+		return self.session.run(self.prediction, feed_dict={
+			self.words_placeholder: words,
+			self.capitals_placeholder: capitals
+		})
+
+	def write_predictions_to_file(self, comments, x_dev, y_dev=None, batch_size=100, filename="submissions/lstm_model.csv"): 
 		with open(filename, 'wb') as csv_file:
 			csv_writer = csv.writer(csv_file)
 			csv_writer.writerow(['id','toxic','severe_toxic','obscene','threat','insult','identity_hate'])
 			num_batches = int(np.ceil(len(x)/float(batch_size)))
 			for i in range(num_batches):
-				predictions, scores = self.predict_helper(x_dev[batch_size*i:batch_size*(i+1)], y_dev)
+				predictions, scores = self.predict(x_dev[batch_size*i:batch_size*(i+1)])
 				for j in range(len(predictions)):
 					row = [comments[batch_size*i+j].example_id]
 					row.extend(predictions[j])
 					csv_writer.writerow(row)
-
-	def predict_helper(self, x_dev, y_dev=None): 
-		words, capitals = zip(*x_dev)
-		print "Predict helper\n"
-		print np.array(x_dev).shape 
-		print self.inputs_placeholder.shape 
-
-		preds = self.session.run(self.prediction, {
-			# self.words_placeholder: words,
-			# self.capitals_placeholder: capitals
-			self.inputs_placeholder: np.array(x_dev), 
-		})
-		scores = None 
-		if y_dev is not None: 
-			scores = self.get_scores(y_dev, preds)
-		return preds, scores
 	
 	def close(self): 
 		self.session.close() 
@@ -142,14 +138,14 @@ if __name__ == "__main__":
 	max_comment_length = 100 
 	feature_extractor = OneHotFeatureExtractor(max_comment_length)
 	
-	train_data = DataSet(DataSet.TRAIN_CSV, feature_extractor, count=100, verbose=True) 
+	train_data = DataSet(DataSet.TRAIN_CSV, feature_extractor, count=None, verbose=True) 
 	x, y = train_data.get_data()
-	# DEV_SPLIT = 140000
-	DEV_SPLIT = len(y) / 2
+	DEV_SPLIT = 140000
+	#DEV_SPLIT = len(y) // 2
 	x_train, x_dev = x[:DEV_SPLIT], x[DEV_SPLIT:]
 	y_train, y_dev = y[:DEV_SPLIT], y[DEV_SPLIT:]
 	
-	num_epochs = 1
+	num_epochs = 5
 
 	lstm = LSTM(train_data.vocab, train_data.comments)
 	train_losses, epochs = lstm.train(x_train, y_train, x_dev, y_dev, num_epochs = num_epochs)
@@ -158,6 +154,7 @@ if __name__ == "__main__":
 	del train_data.comments
 	test_data = DataSet(DataSet.TEST_CSV, feature_extractor, test=True, verbose=True) 	
 	x, y = test_data.get_data()
-	lstm.predict(test_data.comments, x)
+	
+	lstm.write_predictions_to_file(test_data.comments, x)
 	lstm.close() 
 

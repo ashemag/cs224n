@@ -119,12 +119,12 @@ class LSTM(Model):
 		})
 
 	def write_predictions_to_file(self, comments, x_dev, y_dev=None, batch_size=100, filename="submissions/lstm_model.csv"): 
-		with open(filename, 'wb') as csv_file:
+		with open(filename, 'w') as csv_file:
 			csv_writer = csv.writer(csv_file)
 			csv_writer.writerow(['id','toxic','severe_toxic','obscene','threat','insult','identity_hate'])
 			num_batches = int(np.ceil(len(x)/float(batch_size)))
 			for i in range(num_batches):
-				predictions, scores = self.predict(x_dev[batch_size*i:batch_size*(i+1)])
+				predictions = self.predict(x_dev[batch_size*i:batch_size*(i+1)])
 				for j in range(len(predictions)):
 					row = [comments[batch_size*i+j].example_id]
 					row.extend(predictions[j])
@@ -145,7 +145,7 @@ if __name__ == "__main__":
 	x_train, x_dev = x[:DEV_SPLIT], x[DEV_SPLIT:]
 	y_train, y_dev = y[:DEV_SPLIT], y[DEV_SPLIT:]
 	
-	num_epochs = 5
+	num_epochs = 1
 
 	lstm = LSTM(train_data.vocab, train_data.comments)
 	train_losses, epochs = lstm.train(x_train, y_train, x_dev, y_dev, num_epochs = num_epochs)

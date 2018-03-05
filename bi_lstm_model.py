@@ -40,7 +40,8 @@ class BiLSTM(Model):
 			outputs, _ = tf.nn.bidirectional_dynamic_rnn(cell_fw, cell_bw, inputs=x, dtype=tf.float32)
 			
 			# The average of outputs across all time steps
-			rnn_output = tf.reduce_mean(tf.concat(outputs, 2), axis=1) 
+			# rnn_output = tf.reduce_mean(tf.concat(outputs, 2), axis=1) 
+			rnn_output = tf.concat((outputs[0][:,-1,:],outputs[1][:,0,:]), 1)
 
 			dense1 = tf.layers.dense(
 				inputs = rnn_output,
@@ -64,6 +65,7 @@ class BiLSTM(Model):
 			self.losses = -self.y*self.log_epsilon(self.y_hat) - (1-self.y)*self.log_epsilon(1-self.y_hat)
 			self.loss = tf.reduce_mean(self.losses)
 			self.train_op = tf.train.AdamOptimizer(self.lr).minimize(self.loss)
+			self.auroc_scores = [tf.metrics.auc(self.y[:, klass], self.y_hat[:, klass]) for klass in range(self.num_classes)]
 
 			self.session.run(tf.global_variables_initializer())
 
@@ -136,6 +138,19 @@ class BiLSTM(Model):
 				print('AUROC Scores: {0}'.format(auroc_scores))
 				print('Mean AUROC Score: {0} {1}\n'.format(mean_auroc, marker))
 
+	def compute_auroc_scores(self, x_data, y_data):
+		with self.graph.as_default():
+			self.session.run(tf.local_variables_initializer())
+			scores = [self.auroc_scores[klass][0] for klass in range(self.num_classes)]
+			update_ops = [self.auroc_scores[klass][1] for klass in range(self.num_classes)]
+			words, capitals = zip(*x_data)
+			self.session.run(update_ops, feed_dict = {
+				self.words_placeholder: words,
+				self.capitals_placeholder: capitals,
+				self.y: y_data,
+			})
+			return self.session.run(scores)
+	
 	def predict(self, x):
 		words, capitals = zip(*x)
 		return self.session.run(self.y_hat, feed_dict={
@@ -154,14 +169,14 @@ class BiLSTM(Model):
 
 # Debugging / Testing code
 if __name__ == "__main__":
-	train = True
+	train = False
 	seed = 13
 	np.random.seed(seed)
 	random.seed(seed)
 	np.set_printoptions(precision=4, suppress=True)
 
 	num_classes = 6
-	comment_length = 100
+	comment_length = 200
 
 	feature_extractor = OneHotFeatureExtractor(comment_length) 
 	train_dataset = DataSet(DataSet.TRAIN_CSV, feature_extractor, count=None, verbose=True)
@@ -169,15 +184,11 @@ if __name__ == "__main__":
 
 	if train:
 		x, y = train_dataset.get_data()
-
-		'''
+		
 		index = 140000
 		x_train, x_dev = x[:index], x[index:]
 		y_train, y_dev = y[:index], y[index:]
-		'''
-		x_train, x_dev = x[:1000], x[140000:]
-		y_train, y_dev = y[:1000], y[140000:]
-		
+
 		model.train(x_train, y_train, x_dev, y_dev, num_epochs=10)
 		#model.load('models/BiLSTM/BiLSTM')
 		'''
@@ -195,8 +206,7 @@ if __name__ == "__main__":
 		'''
 
 	else:
-		'''
-		#model.load('models/BiLSTM/BiLSTM')
+		model.load('models/BiLSTM/BiLSTM')
 		feature_extractor = OneHotFeatureExtractor(comment_length, train_dataset.vocab)
 		test_dataset = DataSet(DataSet.TEST_CSV, feature_extractor, test=True, verbose=True)
 		x, y = test_dataset.get_data()
@@ -214,8 +224,6 @@ if __name__ == "__main__":
 					row = [test_dataset.comments[batch_size*i+j].example_id]
 					row.extend(predictions[j])
 					csv_writer.writerow(row)
-		'''
-
 
 
 

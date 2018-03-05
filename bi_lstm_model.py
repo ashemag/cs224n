@@ -1,5 +1,6 @@
 import datetime
 import numpy as np
+import os
 import random
 import tensorflow as tf
 
@@ -8,11 +9,11 @@ from feature_extractor import *
 from Model import *
 from util import Progbar
 
-class CNNModel(Model):
+class BiLSTM(Model):
 	def __init__(self, vocab, num_classes, comment_length):
 		self.graph = tf.Graph()
 		with self.graph.as_default():
-			Model.__init__(self, 'CNNModel')
+			Model.__init__(self, 'BiLSTM')
 
 			self.vocab_size = len(vocab)
 			self.vocab = vocab
@@ -21,40 +22,29 @@ class CNNModel(Model):
 
 			self.embedding_size = 200
 			self.capitalization_size = 3
-			self.word_vector_size = self.embedding_size + self.capitalization_size
-			self.input_length = self.word_vector_size * self.comment_length
 
 			self.words_placeholder = tf.placeholder(tf.int32, shape=(None, self.comment_length), name='words')
 			self.capitals_placeholder = tf.placeholder(tf.int32, shape=(None, self.comment_length), name='capitals') 
 
-			#Random embeddings: Comment out to avoid duplicate TF variables 
-			# words, capitals = self.generate_random_embeddings()
-			#Pretrained embeddings 
-			words, capitals = self.generate_pretrained_embeddings(self.vocab)
-
-			x = tf.reshape(tf.concat([words, capitals], 2), [-1, 1, self.input_length, 1])
-			self.y = tf.placeholder(tf.float32, shape=(None, self.num_classes))
-
-			self.conv1 = tf.layers.conv2d(
-				inputs = x,
-				filters = 64,
-				strides = (1, self.word_vector_size),
-				kernel_size = (1, 5*(self.embedding_size+3)),
-				padding = 'same',
-				kernel_initializer = tf.contrib.layers.xavier_initializer(),
-				bias_initializer = tf.zeros_initializer(),
-				activation = tf.nn.elu,
-				name = 'conv1'
-			)
-
-			self.dropout_rate = tf.placeholder(tf.float32, shape=())
+			# Random embeddings: Comment out to avoid duplicate TF variables 
+			words, capitals = self.generate_random_embeddings()
 			
-			self.dense1 = tf.layers.dense(
-				inputs = tf.contrib.layers.dropout(
-					tf.contrib.layers.flatten(self.conv1),
-					keep_prob = 1-self.dropout_rate,
-				),
-				units = 50,
+			# Pretrained embeddings 
+			# words, capitals = self.generate_pretrained_embeddings(self.vocab)
+
+			x = tf.concat([words, capitals], 2)
+			self.y = tf.placeholder(tf.float32, shape=(None, self.num_classes))
+			
+			cell_fw = tf.contrib.rnn.LSTMCell(128)
+			cell_bw = tf.contrib.rnn.LSTMCell(128)
+			outputs, _ = tf.nn.bidirectional_dynamic_rnn(cell_fw, cell_bw, inputs=x, dtype=tf.float32)
+			
+			# The average of outputs across all time steps
+			rnn_output = tf.reduce_mean(tf.concat(outputs, 2), axis=1) 
+
+			dense1 = tf.layers.dense(
+				inputs = rnn_output,
+				units = 64,
 				kernel_initializer = tf.contrib.layers.xavier_initializer(),
 				bias_initializer = tf.zeros_initializer(),
 				activation = tf.nn.elu,
@@ -62,7 +52,7 @@ class CNNModel(Model):
 			)
 
 			self.y_hat = tf.layers.dense(
-				inputs = self.dense1,
+				inputs = dense1,
 				units = self.num_classes,
 				kernel_initializer = tf.contrib.layers.xavier_initializer(),
 				bias_initializer = tf.zeros_initializer(),
@@ -70,11 +60,10 @@ class CNNModel(Model):
 				name = 'y_hat'
 			)
 			
-			self.lr = tf.placeholder(tf.float64, shape=())
+			self.lr = tf.placeholder(tf.float32, shape=())
 			self.losses = -self.y*self.log_epsilon(self.y_hat) - (1-self.y)*self.log_epsilon(1-self.y_hat)
 			self.loss = tf.reduce_mean(self.losses)
 			self.train_op = tf.train.AdamOptimizer(self.lr).minimize(self.loss)
-			self.auroc_scores = [tf.metrics.auc(self.y[:, klass], self.y_hat[:, klass]) for klass in range(self.num_classes)]
 
 			self.session.run(tf.global_variables_initializer())
 
@@ -85,23 +74,11 @@ class CNNModel(Model):
 	def log_epsilon(self, tensor):
 		return tf.log(tensor + 1e-10)
 
-	def compute_auroc_scores(self, x_data, y_data):
-		with self.graph.as_default():
-			self.session.run(tf.local_variables_initializer())
-			scores = [self.auroc_scores[klass][0] for klass in range(num_classes)]
-			update_ops = [self.auroc_scores[klass][1] for klass in range(num_classes)]
-
-			words, capitals = zip(*x_data)
-			self.session.run(update_ops, feed_dict = {
-				self.words_placeholder: words,
-				self.capitals_placeholder: capitals,
-				self.y: y_data,
-				self.dropout_rate: 0.0
-			})
-
-			return self.session.run(scores)
-
 	def save(self, filename):
+		directory = os.path.dirname(filename)
+		if not os.path.exists(directory):
+			os.makedirs(directory)
+		
 		with self.graph.as_default():
 			tf.train.Saver().save(self.session, filename)
 
@@ -134,7 +111,6 @@ class CNNModel(Model):
 					self.capitals_placeholder: capitals,
 					self.y: y_batch,
 					self.lr: lr,
-					self.dropout_rate: 0.5
 				})
 
 				mean_auroc = 0#np.mean(self.compute_auroc_scores(x_batch, y_batch))
@@ -146,7 +122,6 @@ class CNNModel(Model):
 					self.words_placeholder: words,
 					self.capitals_placeholder: capitals,
 					self.y: y_dev,
-					self.dropout_rate: 0.0
 				})
 				auroc_scores = self.compute_auroc_scores(x_dev, y_dev)
 				mean_auroc = np.mean(auroc_scores)
@@ -166,7 +141,6 @@ class CNNModel(Model):
 		return self.session.run(self.y_hat, feed_dict={
 			self.words_placeholder: words,
 			self.capitals_placeholder: capitals,
-			self.dropout_rate: 0.0
 		})
 
 	def get_losses(self, x, y):
@@ -175,13 +149,12 @@ class CNNModel(Model):
 			self.words_placeholder: words,
 			self.capitals_placeholder: capitals,
 			self.y: y,
-			self.dropout_rate: 0.0
 		})
 		return np.mean(losses, axis=1)
 
 # Debugging / Testing code
 if __name__ == "__main__":
-	train = False
+	train = True
 	seed = 13
 	np.random.seed(seed)
 	random.seed(seed)
@@ -192,18 +165,23 @@ if __name__ == "__main__":
 
 	feature_extractor = OneHotFeatureExtractor(comment_length) 
 	train_dataset = DataSet(DataSet.TRAIN_CSV, feature_extractor, count=None, verbose=True)
-	cnn = CNNModel(train_dataset.vocab, num_classes, comment_length)
+	model = BiLSTM(train_dataset.vocab, num_classes, comment_length)
 
 	if train:
 		x, y = train_dataset.get_data()
 
+		'''
 		index = 140000
 		x_train, x_dev = x[:index], x[index:]
 		y_train, y_dev = y[:index], y[index:]
+		'''
+		x_train, x_dev = x[:1000], x[140000:]
+		y_train, y_dev = y[:1000], y[140000:]
 		
-		cnn.train(x_train, y_train, x_dev, y_dev, num_epochs=10)
-		#cnn.load('models/CNNModel/CNNModel')
-		predictions, losses = cnn.predict(x_dev), cnn.get_losses(x_dev, y_dev)
+		model.train(x_train, y_train, x_dev, y_dev, num_epochs=10)
+		#model.load('models/BiLSTM/BiLSTM')
+		'''
+		predictions, losses = model.predict(x_dev), model.get_losses(x_dev, y_dev)
 
 		results = zip(train_dataset.comments[index:], x_dev, y_dev, predictions, losses)
 		results = sorted(results, key=lambda x: x[-1], reverse=True)
@@ -214,16 +192,16 @@ if __name__ == "__main__":
 			print('Y:     {0}'.format(y))
 			print('Y_hat: {0}'.format(y_hat))
 			print('Loss: {0}\n'.format(loss))
-
-
+		'''
 
 	else:
-		cnn.load('models/CNNModel/CNNModel')
+		'''
+		#model.load('models/BiLSTM/BiLSTM')
 		feature_extractor = OneHotFeatureExtractor(comment_length, train_dataset.vocab)
 		test_dataset = DataSet(DataSet.TEST_CSV, feature_extractor, test=True, verbose=True)
 		x, y = test_dataset.get_data()
 
-		with open('submissions/cnn_model.csv', 'w') as csv_file:
+		with open('submissions/bi_lstm_model.csv', 'w') as csv_file:
 			csv_writer = csv.writer(csv_file)
 			csv_writer.writerow(['id','toxic','severe_toxic','obscene','threat','insult','identity_hate'])
 			
@@ -231,11 +209,12 @@ if __name__ == "__main__":
 			num_batches = int(np.ceil(len(x)/float(batch_size)))
 			for i in range(num_batches):
 				if i % 10 == 0: print(i)
-				predictions = cnn.predict(x[batch_size*i:batch_size*(i+1)])
+				predictions = model.predict(x[batch_size*i:batch_size*(i+1)])
 				for j in range(len(predictions)):
 					row = [test_dataset.comments[batch_size*i+j].example_id]
 					row.extend(predictions[j])
 					csv_writer.writerow(row)
+		'''
 
 
 

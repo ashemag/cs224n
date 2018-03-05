@@ -27,7 +27,7 @@ class Model:
 	def compute_auroc_scores(self, x_data, y_data):
 		preds = self.predict(x_data)
 		y = np.array(y_data)
-		return [ roc_auc_score(y[:, i], preds[:, i]) for i in range(self.n_classes) ]
+		return [ roc_auc_score(y[:, i], preds[:, i]) for i in range(y.shape[1]) ]
 	
 	@staticmethod
 	def one_hot_embedding_matrix(size):

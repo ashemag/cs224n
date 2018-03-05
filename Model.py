@@ -36,7 +36,6 @@ class Model:
 	@staticmethod
 	def create_twitter_embeddings(vocab): 
 		embeddings_index = {}
-		'''
 		print("=== Processing Glove Twitter embeddings ===")
 		with open('glove.twitter.27B/glove.twitter.27B.200d.txt') as f:
 		 	for line in f:
@@ -44,7 +43,6 @@ class Model:
 		 		word = values[0]
 		 		embeddings_index[word] = np.asarray(values[1:], dtype='float64')
 		print("=== Glove Twitter embeddings processed ===")
-		'''
 		
 		embeddings = []
 		for word in vocab:
@@ -52,7 +50,7 @@ class Model:
 			if embed is not None: 
 				embeddings.append(embed)
 			else: 
-				embeddings.append(np.random.rand(200))
+				embeddings.append(np.random.randn(200))
 		return np.array(embeddings).astype(np.float32) 
 		
 		# embedding_dim = 200 

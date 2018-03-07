@@ -33,8 +33,8 @@ class BiLSTM(Model):
 			self.y = tf.placeholder(tf.float32, shape=(None, num_classes))
 
 			self.dropout = tf.placeholder(tf.float32, shape=())
-			num_cells = 100
-			num_layers = 2
+			num_cells = 256
+			num_layers = 3
 
 			cell_fw = tf.contrib.rnn.MultiRNNCell([tf.contrib.rnn.DropoutWrapper(tf.contrib.rnn.LSTMCell(num_cells), output_keep_prob=1-self.dropout) for _ in range(num_layers)])
 			cell_bw = tf.contrib.rnn.MultiRNNCell([tf.contrib.rnn.DropoutWrapper(tf.contrib.rnn.LSTMCell(num_cells), output_keep_prob=1-self.dropout) for _ in range(num_layers)])
@@ -153,7 +153,7 @@ class BiLSTM(Model):
 		})
 
 # Debugging / Testing code
-if __name__ == "__main__":
+if __name__ == "__main__": 
 	train = True
 	seed = 13
 	np.random.seed(seed)

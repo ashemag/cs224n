@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import csv
 import math
 import random
 import tensorflow as tf
@@ -123,7 +124,7 @@ class Model:
 			num_batches = int(np.ceil(len(x)/float(batch_size)))
 			for i in range(num_batches):
 				if i % 10 == 0: print(i)
-				predictions = model.predict(x[batch_size*i:batch_size*(i+1)])
+				predictions = self.predict(x[batch_size*i:batch_size*(i+1)])
 				for j in range(len(predictions)):
 					row = [test_dataset.comments[batch_size*i+j].example_id]
 					row.extend(predictions[j])

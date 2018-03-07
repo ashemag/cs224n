@@ -26,7 +26,7 @@ class OneHotFeatureExtractor(FeatureExtractor):
 	def parse(self, words, vocab):
 		if len(vocab) == 0: vocab = self.vocab
 
-		valid_words = [ word.lower() if word.lower() in vocab else '<unknown_word>' for word in words ]
+		valid_words = [ word.lower() if word.lower() in vocab else '<unknown>' for word in words ]
 		word_features = [ vocab[word] for word in valid_words ] # index of each word in comment in the vocab.
 		capital_features = [ self.capitalization_index(word) for word in words ]
 

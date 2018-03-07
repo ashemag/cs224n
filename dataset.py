@@ -11,7 +11,7 @@ import sys, os
 from feature_extractor import *
 
 filename = 'one-hot-dataset-small.pkl'
-VOCAB_CAP = 20000
+
 
 class Comment: 
 	def __init__(self, example_id, words, labels, labels_vec = []):
@@ -23,16 +23,17 @@ class DataSet:
 	CLASSES = ['toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate']
 	TRAIN_CSV = "data/train.csv"
 	TEST_CSV = "data/test.csv"
-	UNKNOWN_WORD = "<unknown_word>"
+	UNKNOWN_WORD = "<unknown>"
+	MIN_WORD_COUNT = 20
 
 	# csv_filename = CSV file to read the comment data from
 	# feature_extractor = function that converts a list of words into a list of word embeddings
-	def __init__(self, csv_filename, feature_extractor, count=None, test=False, verbose=False):
+	def __init__(self, csv_filename, feature_extractor, count=None, test=False, use_glove=False, verbose=False):
 		self.test = test
 
 		start_time = int(round(time.time() * 1000)) 
 		self.comments, self.vocab = self.load_data(csv_filename, count) 
-		self.vocab = [] if self.test else DataSet.prune_vocabulary(self.vocab)
+		self.vocab = [] if self.test else DataSet.prune_vocabulary(self.vocab, use_glove)
 		end_time = int(round(time.time() * 1000))
 
 		self.feature_extractor = feature_extractor
@@ -54,14 +55,30 @@ class DataSet:
 	def split_into_words(text):
 		return re.findall(r"[\w'-]+|[.,!?;]", text)
 
-	# Processes vocabulary by removing some subset of the words
-	# TODO: We need to decide on how to go about this. 
 	@staticmethod
-	def prune_vocabulary(vocab):
-		#new_vocab = sorted(list(set(vocab.elements())))
-		new_vocab = sorted([ word for word, count in vocab.most_common(VOCAB_CAP) ])
-		new_vocab.append(DataSet.UNKNOWN_WORD)
-		return { word:index for index, word in enumerate(new_vocab) }
+	def get_glove_vocab():
+		glove_vocab = set()
+		with open('glove.twitter.27B/glove.twitter.27B.200d.txt') as f:
+		 	for line in f:
+		 		glove_vocab.add(line.split(' ')[0])
+		return glove_vocab
+
+	# Processes vocabulary by removing some subset of the words
+	@staticmethod
+	def prune_vocabulary(vocab, use_glove):
+		if use_glove:
+			# words in glove vocab and comment vocab
+			glove_vocab = DataSet.get_glove_vocab().intersection(set(vocab.elements())) if use_glove else set()
+		else:
+			glove_vocab = set()
+
+		# Only include words that occur >= MIN_WORD_COUNT times
+		comment_vocab = set([word for word, count in vocab.items() if count >= DataSet.MIN_WORD_COUNT])
+		
+		vocab = sorted(list(comment_vocab.union(glove_vocab))) 
+		vocab.append(DataSet.UNKNOWN_WORD)
+
+		return { word:index for index, word in enumerate(vocab) }
 		
 	# Loads all of the comment data from the given |csv_filename|, only reads
 	# the first |count| comments from the dataset (for debugging)
@@ -115,6 +132,6 @@ class DataSet:
 # Debugging / Testing code
 if __name__ == "__main__":
 	feature_extractor = OneHotFeatureExtractor(100) 
-	data = DataSet(DataSet.TRAIN_CSV, feature_extractor, count=10000, verbose=True)
+	data = DataSet(DataSet.TRAIN_CSV, feature_extractor, count=None, use_glove=True, verbose=True)
 	x, y = data.get_data()
 

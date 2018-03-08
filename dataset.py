@@ -14,10 +14,11 @@ filename = 'one-hot-dataset-small.pkl'
 
 
 class Comment: 
-	def __init__(self, example_id, words, labels, labels_vec = []):
+	def __init__(self, example_id, words, labels, chars):
 		self.example_id = example_id
 		self.words = words
 		self.labels = labels
+		self.chars = chars 
 
 class DataSet:
 	CLASSES = ['toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate']
@@ -28,9 +29,9 @@ class DataSet:
 
 	# csv_filename = CSV file to read the comment data from
 	# feature_extractor = function that converts a list of words into a list of word embeddings
-	def __init__(self, csv_filename, feature_extractor, count=None, test=False, use_glove=False, verbose=False):
+	def __init__(self, csv_filename, feature_extractor, count=None, test=False, use_glove=False, character_level=False, verbose=False):
 		self.test = test
-
+		self.character_level = character_level
 		start_time = int(round(time.time() * 1000)) 
 		self.comments, self.vocab = self.load_data(csv_filename, count) 
 		self.vocab = [] if self.test else DataSet.prune_vocabulary(self.vocab, use_glove)
@@ -82,10 +83,10 @@ class DataSet:
 		
 	# Loads all of the comment data from the given |csv_filename|, only reads
 	# the first |count| comments from the dataset (for debugging)
-	def load_data(self, csv_filename, count=None):
+	def load_data(self, csv_filename, character_level, count=None):
 		comments = []
 		vocab = collections.Counter()
-
+		print "Started loading data"
 		with open(csv_filename) as csvfile:
 			reader = csv.DictReader(csvfile)
 			for i, row in enumerate(reader):
@@ -93,11 +94,20 @@ class DataSet:
 
 				words = DataSet.split_into_words(row['comment_text']) #list 
 				labels = None if self.test else set([c for c in DataSet.CLASSES if row[c] == '1'])
-				comments.append(Comment(row['id'], words, labels))
+		
+				chars = None 
+				if self.character_level: 
+					txt = ''
+					for word in words: 
+						for c in word: 
+							txt += c 
+					chars = list(txt)
+
+				comments.append(Comment(row['id'], words, labels, chars))
 				
 				if not self.test:
 					vocab.update([word.lower() for word in words])
-		
+		print "Finished loading data"
 		return comments, vocab
 
 	# Converts a set of |labels| into the appropriate "one-hot" vector (i.e. there will
@@ -113,7 +123,7 @@ class DataSet:
 	def get_data(self):
 		if self.x is None:
 			start_time = int(round(time.time() * 1000))
-			self.x = [ self.feature_extractor.parse(c.words, self.vocab) for c in self.comments ]
+			self.x = [ self.feature_extractor.parse(c.words, self.vocab, self.character_level, c.chars) for c in self.comments ]
 			if not self.test:
 				self.y = [ DataSet.to_label_vector(c.labels) for c in self.comments ]
 			end_time = int(round(time.time() * 1000))
@@ -132,6 +142,6 @@ class DataSet:
 # Debugging / Testing code
 if __name__ == "__main__":
 	feature_extractor = OneHotFeatureExtractor(100) 
-	data = DataSet(DataSet.TRAIN_CSV, feature_extractor, count=None, use_glove=True, verbose=True)
+	data = DataSet(DataSet.TRAIN_CSV, feature_extractor, count=None, use_glove=False, character_level=True, verbose=True)
 	x, y = data.get_data()
 

@@ -32,10 +32,10 @@ class LSTM(Model):
 			self.capitalization_size = 3
 
 			#Random embeddings: Comment out to avoid duplicate TF variables 
-			# words, capitals = self.generate_random_embeddings()
+			words, capitals = self.generate_random_embeddings(vocab)
 
 			#Pretrained embeddings 
-			words, capitals = self.generate_pretrained_embeddings(self.vocab)
+			# words, capitals = self.generate_pretrained_embeddings(self.vocab)
 
 			inputs = tf.concat([words, capitals], 2)
 			cell = tf.contrib.rnn.LSTMCell(self.hidden_states, state_is_tuple=True, reuse=None)
@@ -138,10 +138,10 @@ if __name__ == "__main__":
 	max_comment_length = 100 
 	feature_extractor = OneHotFeatureExtractor(max_comment_length)
 	
-	train_data = DataSet(DataSet.TRAIN_CSV, feature_extractor, count=None, verbose=True) 
+	train_data = DataSet(DataSet.TRAIN_CSV, feature_extractor, count=100, verbose=True, use_glove=False, character_level=True) 
 	x, y = train_data.get_data()
-	DEV_SPLIT = 140000
-	#DEV_SPLIT = len(y) // 2
+	# DEV_SPLIT = 140000
+	DEV_SPLIT = len(y) / 2
 	x_train, x_dev = x[:DEV_SPLIT], x[DEV_SPLIT:]
 	y_train, y_dev = y[:DEV_SPLIT], y[DEV_SPLIT:]
 	
@@ -150,9 +150,9 @@ if __name__ == "__main__":
 	lstm = LSTM(train_data.vocab, train_data.comments)
 	train_losses, epochs = lstm.train(x_train, y_train, x_dev, y_dev, num_epochs = num_epochs)
 	
-	feature_extractor = OneHotFeatureExtractor(100, train_data.vocab)
+	feature_extractor = OneHotFeatureExtractor(max_comment_length, train_data.vocab)
 	del train_data.comments
-	test_data = DataSet(DataSet.TEST_CSV, feature_extractor, test=True, verbose=True) 	
+	test_data = DataSet(DataSet.TEST_CSV, feature_extractor, count = 100, test=True, verbose=True, use_glove=False, character_level=True) 	
 	x, y = test_data.get_data()
 	
 	lstm.write_predictions_to_file(test_data.comments, x)

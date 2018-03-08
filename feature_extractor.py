@@ -21,23 +21,36 @@ class OneHotFeatureExtractor(FeatureExtractor):
 		FeatureExtractor.__init__(self)
 		self.comment_length = comment_length
 		self.vocab = vocab
+	
+	
 
 	# called for each comment 
-	def parse(self, words, vocab):
-		if len(vocab) == 0: vocab = self.vocab
+	def parse(self, words, vocab, character_level, chars):
+		if character_level: 
+			capital_features = [self.capitalization_index(char) for char in chars]  
+			word_features = [i for i, char in enumerate(chars)] #position in comment 
+			if len(chars) < self.comment_length: 
+				padding_length = self.comment_length - len(chars)
+				word_features += [len(vocab)] * padding_length #arbitrary 
+				capital_features += [3] * padding_length  
+				
+			word_features, capital_features = word_features[:self.comment_length], capital_features[:self.comment_length]
+			return word_features, capital_features
+		else: 
+			if len(vocab) == 0: vocab = self.vocab
 
-		valid_words = [ word.lower() if word.lower() in vocab else '<unknown>' for word in words ]
-		word_features = [ vocab[word] for word in valid_words ] # index of each word in comment in the vocab.
-		capital_features = [ self.capitalization_index(word) for word in words ]
+			valid_words = [ word.lower() if word.lower() in vocab else '<unknown>' for word in words ]
+			word_features = [ vocab[word] for word in valid_words ] # index of each word in comment in the vocab.
+			capital_features = [ self.capitalization_index(word) for word in words ]
 
-		#padding 
-		if len(word_features) < self.comment_length:
-			padding_length = self.comment_length-len(word_features)
-			word_features += [len(vocab)] * padding_length
-			capital_features += [3] * padding_length  
-		
-		#truncates when > comment length 
-		return word_features[:self.comment_length], capital_features[:self.comment_length] 
+			#padding 
+			if len(word_features) < self.comment_length:
+				padding_length = self.comment_length-len(word_features)
+				word_features += [len(vocab)] * padding_length
+				capital_features += [3] * padding_length  
+			
+			#truncates when > comment length 
+			return word_features[:self.comment_length], capital_features[:self.comment_length] 
 
 # Debugging / Testing code
 if __name__ == "__main__":

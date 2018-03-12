@@ -101,6 +101,7 @@ class DataSet:
 					for word in words: 
 						for c in word: 
 							txt += c 
+						txt += ' '
 					chars = list(txt)
 
 				comments.append(Comment(row['id'], words, labels, chars))

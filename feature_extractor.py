@@ -27,14 +27,15 @@ class OneHotFeatureExtractor(FeatureExtractor):
 	# called for each comment 
 	def parse(self, words, vocab, character_level, chars):
 		if character_level: 
+			max_len = self.comment_length * 5 
 			capital_features = [self.capitalization_index(char) for char in chars]  
 			word_features = [i for i, char in enumerate(chars)] #position in comment 
-			if len(chars) < self.comment_length: 
-				padding_length = self.comment_length - len(chars)
+			if len(chars) < max_len: 
+				padding_length = max_len - len(chars)
 				word_features += [len(vocab)] * padding_length #arbitrary 
 				capital_features += [3] * padding_length  
 				
-			word_features, capital_features = word_features[:self.comment_length], capital_features[:self.comment_length]
+			word_features, capital_features = word_features[:max_len], capital_features[:max_len]
 			return word_features, capital_features
 		else: 
 			if len(vocab) == 0: vocab = self.vocab

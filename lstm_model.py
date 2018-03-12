@@ -12,7 +12,7 @@ from util import Progbar
 import datetime
 
 class LSTM(Model):
-	def __init__(self, vocab, comments, n_classes=6, n_features=2, comment_length=100):
+	def __init__(self, vocab, comments, comment_length, n_classes=6, n_features=2):
 		Model.__init__(self, 'LSTMModel')
 		
 		with tf.variable_scope(type(self).__name__):
@@ -147,7 +147,7 @@ if __name__ == "__main__":
 	
 	num_epochs = 1
 
-	lstm = LSTM(train_data.vocab, train_data.comments)
+	lstm = LSTM(train_data.vocab, train_data.comments, comment_length=max_comment_length * 5)
 	train_losses, epochs = lstm.train(x_train, y_train, x_dev, y_dev, num_epochs = num_epochs)
 	
 	feature_extractor = OneHotFeatureExtractor(max_comment_length, train_data.vocab)

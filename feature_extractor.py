@@ -21,8 +21,6 @@ class OneHotFeatureExtractor(FeatureExtractor):
 		FeatureExtractor.__init__(self)
 		self.comment_length = comment_length
 		self.vocab = vocab
-	
-	
 
 	# called for each comment 
 	def parse(self, words, vocab, character_level, chars):

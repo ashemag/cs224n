@@ -71,7 +71,7 @@ class Model:
 		# return embed_comments
 
 	#generate random embeddings
-	def generate_pretrained_embeddings(self, vocab, embedding_size=200, trainable=True): 
+	def generate_pretrained_embeddings(self, vocab, embedding_size=200, trainable=False): 
 		E_words = tf.get_variable(
 			name = 'E_words',
 			initializer = self.create_twitter_embeddings(vocab, embedding_size),
@@ -87,15 +87,22 @@ class Model:
 		return words, capitals
 
 	#generate random embeddings
-	def generate_random_embeddings(self, vocab, embedding_size=200, trainable=True):
-		E_words = tf.get_variable(
-			name = 'E_words',
-			shape = (len(vocab), embedding_size),
-			initializer=tf.contrib.layers.xavier_initializer(),
-			trainable = trainable,
-		) 
+	def generate_random_embeddings(self, vocab, embedding_size=200, trainable=False):
+		# dia_size = tf.zeros((len(vocab), embedding_size))
+		# b = tf.matrix_diag(dia_size)
+		# E_words = tf.get_variable(
+		# 	name = 'E_words',
+		# 	# shape = (len(vocab), embedding_size),
+		# 	initializer=b, 
+		# 	# initializer=tf.contrib.layers.xavier_initializer(),
+		# 	trainable = trainable,
+		# ) 
+		indices = [i for i in range(len(vocab))]
+		E_words = tf.one_hot(indices, embedding_size)
 		E_words = tf.concat([E_words, np.zeros((1, embedding_size)).astype(np.float32)], axis=0)
 		
+
+		# E_words = tf.get_variable(initializer=self.one_hot_embedding_matrix(embedding_size), name='E_words')
 		capitalization_size = 3
 		E_capitals = tf.constant(self.one_hot_embedding_matrix(capitalization_size), name='E_capitals')
 		

@@ -32,7 +32,7 @@ class LSTM(Model):
 			self.capitalization_size = 3
 
 			#Random embeddings: Comment out to avoid duplicate TF variables 
-			words, capitals = self.generate_random_embeddings(vocab)
+			words, capitals = self.generate_one_hot_embeddings(vocab)
 
 			#Pretrained embeddings 
 			# words, capitals = self.generate_pretrained_embeddings(self.vocab)
@@ -42,8 +42,9 @@ class LSTM(Model):
 			output, state = tf.nn.dynamic_rnn(cell, inputs, dtype=tf.float32)
 
 			#We transpose the output to switch batch size with sequence size
-			output = tf.transpose(output, [1, 0, 2])
-			last = tf.gather(output, int(output.get_shape()[0]) - 1)
+			#output = tf.transpose(output, [1, 0, 2])
+			#last = tf.gather(output, int(output.get_shape()[0]) - 1)
+			last = tf.reduce_mean(output, axis=1)
 
 			weight = tf.Variable(tf.truncated_normal([self.hidden_states, 50]))
 			bias = tf.Variable(tf.constant(0.1, shape=[50]))
@@ -140,8 +141,10 @@ if __name__ == "__main__":
 	
 	train_data = DataSet(DataSet.TRAIN_CSV, feature_extractor, verbose=True, use_glove=False, character_level=True) 
 	x, y = train_data.get_data()
-	# DEV_SPLIT = 140000
-	DEV_SPLIT = len(y) / 2
+	
+	DEV_SPLIT = 150000
+	#DEV_SPLIT = 1000
+	#DEV_SPLIT2 = -20000
 	x_train, x_dev = x[:DEV_SPLIT], x[DEV_SPLIT:]
 	y_train, y_dev = y[:DEV_SPLIT], y[DEV_SPLIT:]
 	

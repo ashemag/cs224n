@@ -35,6 +35,7 @@ class DataSet:
 		start_time = int(round(time.time() * 1000)) 
 		self.comments, self.vocab = self.load_data(csv_filename, count) 
 		self.vocab = [] if self.test else DataSet.prune_vocabulary(self.vocab, use_glove)
+		print(self.vocab)
 		end_time = int(round(time.time() * 1000))
 
 		self.feature_extractor = feature_extractor
@@ -86,7 +87,7 @@ class DataSet:
 	def load_data(self, csv_filename, character_level, count=None):
 		comments = []
 		vocab = collections.Counter()
-		print "Started loading data"
+		print("Started loading data")
 		with open(csv_filename) as csvfile:
 			reader = csv.DictReader(csvfile)
 			for i, row in enumerate(reader):
@@ -107,8 +108,11 @@ class DataSet:
 				comments.append(Comment(row['id'], words, labels, chars))
 				
 				if not self.test:
-					vocab.update([word.lower() for word in words])
-		print "Finished loading data"
+					if self.character_level:
+						vocab.update([ch.lower() for ch in chars])
+					else:
+						vocab.update([word.lower() for word in words])
+		print("Finished loading data")
 		return comments, vocab
 
 	# Converts a set of |labels| into the appropriate "one-hot" vector (i.e. there will

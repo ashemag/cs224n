@@ -24,10 +24,10 @@ class BiLSTM(Model):
 			self.capitals_placeholder = tf.placeholder(tf.int32, shape=(None, comment_length), name='capitals') 
 
 			#Random embeddings: Comment out to avoid duplicate TF variables 
-			#words, capitals = self.generate_random_embeddings(vocab, embedding_size, trainable=True)			
+			#words, capitals = self.generate_random_embeddings(vocab, embedding_size, trainable=True)
 
 			#Pretrained embeddings 
-			words, capitals = self.generate_pretrained_embeddings(vocab, embedding_size, trainable=False)
+			words, capitals = self.generate_pretrained_embeddings(vocab, embedding_size, trainable=True)
 
 			x = tf.concat([words, capitals], 2)
 			self.y = tf.placeholder(tf.float32, shape=(None, num_classes))

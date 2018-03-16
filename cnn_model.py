@@ -23,7 +23,7 @@ class CNNModel(Model):
 			self.capitals_placeholder = tf.placeholder(tf.int32, shape=(None, comment_length), name='capitals') 
 
 			#Random embeddings: Comment out to avoid duplicate TF variables 
-			#words, capitals = self.generate_random_embeddings(vocab, embedding_size, trainable=True)			
+			#words, capitals = self.generate_random_embeddings(vocab, embedding_size, trainable=False)
 
 			#Pretrained embeddings 
 			words, capitals = self.generate_pretrained_embeddings(vocab, embedding_size, trainable=True)
@@ -166,7 +166,7 @@ if __name__ == "__main__":
 		x_train, x_dev = x[:DEV_SPLIT], x[DEV_SPLIT:]
 		y_train, y_dev = y[:DEV_SPLIT], y[DEV_SPLIT:]
 		
-		cnn.train(x_train, y_train, x_dev, y_dev, num_epochs=5)
+		cnn.train(x_train, y_train, x_dev, y_dev, num_epochs=10)
 
 	else:
 		cnn.load('models/CNNModel/CNNModel')

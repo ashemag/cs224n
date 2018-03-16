@@ -35,7 +35,6 @@ class DataSet:
 		start_time = int(round(time.time() * 1000)) 
 		self.comments, self.vocab = self.load_data(csv_filename, count) 
 		self.vocab = [] if self.test else DataSet.prune_vocabulary(self.vocab, use_glove)
-		print(self.vocab)
 		end_time = int(round(time.time() * 1000))
 
 		self.feature_extractor = feature_extractor

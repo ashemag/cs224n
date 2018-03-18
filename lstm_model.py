@@ -32,12 +32,12 @@ class LSTM(Model):
 			self.capitalization_size = 3
 
 			#Random embeddings: Comment out to avoid duplicate TF variables 
-			# words, capitals = self.generate_random_embeddings(vocab, trainable=True)
+			words, capitals = self.generate_random_embeddings(vocab, trainable=True)
 			#character level modeling 
 			# words, capitals = self.generate_one_hot_embeddings(vocab)
 
 			#Pretrained GloVe embeddings 
-			words, capitals = self.generate_pretrained_embeddings(self.vocab, trainable=True)
+			# words, capitals = self.generate_pretrained_embeddings(self.vocab, trainable=True)
 
 			inputs = tf.concat([words, capitals], 2)
 			cell = tf.contrib.rnn.LSTMCell(self.hidden_states, state_is_tuple=True, reuse=None)

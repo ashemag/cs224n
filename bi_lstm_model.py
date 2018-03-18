@@ -141,6 +141,7 @@ class BiLSTM(Model):
 					marker = "*"
 				
 				print('Dev Loss: {0}'.format(dev_loss))
+				print('Accuracies: {0}'.format(self.compute_accuracies(x_dev,y_dev)))
 				print('AUROC Scores: {0}'.format(auroc_scores))
 				print('Mean AUROC Score: {0} {1}\n'.format(mean_auroc, marker))
 	
@@ -154,7 +155,7 @@ class BiLSTM(Model):
 
 # Debugging / Testing code
 if __name__ == "__main__": 
-	train = True
+	train = False#True
 	seed = 13
 	np.random.seed(seed)
 	random.seed(seed)

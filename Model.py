@@ -30,6 +30,10 @@ class Model:
 		y = np.array(y_data)
 		return [ roc_auc_score(y[:, i], preds[:, i]) for i in range(y.shape[1]) ]
 	
+	def compute_accuracies(self, x_data, y_data):
+		correct_labels = np.equal(np.round(self.predict(x_data)), y_data)
+		return np.mean(correct_labels, axis=0)
+
 	@staticmethod
 	def one_hot_embedding_matrix(size):
 		return np.concatenate((np.eye(size), np.zeros((1, size)))).astype(np.float32)

@@ -23,10 +23,10 @@ class CNNModel(Model):
 			self.capitals_placeholder = tf.placeholder(tf.int32, shape=(None, comment_length), name='capitals') 
 
 			#Random embeddings: Comment out to avoid duplicate TF variables 
-			#words, capitals = self.generate_random_embeddings(vocab, embedding_size, trainable=False)
+			words, capitals = self.generate_random_embeddings(vocab, embedding_size, trainable=True)
 
 			#Pretrained embeddings 
-			words, capitals = self.generate_pretrained_embeddings(vocab, embedding_size, trainable=True)
+			#words, capitals = self.generate_pretrained_embeddings(vocab, embedding_size, trainable=True)
 
 			x = tf.reshape(tf.concat([words, capitals], 2), [-1, 1, input_length, 1])
 			self.y = tf.placeholder(tf.float32, shape=(None, num_classes))
@@ -133,6 +133,7 @@ class CNNModel(Model):
 					marker = "*"
 				
 				print('Dev Loss: {0}'.format(dev_loss))
+				print('Accuracies: {0}'.format(self.compute_accuracies(x_dev, y_dev)))
 				print('AUROC Scores: {0}'.format(auroc_scores))
 				print('Mean AUROC Score: {0} {1}\n'.format(mean_auroc, marker))
 

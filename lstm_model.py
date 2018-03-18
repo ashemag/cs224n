@@ -32,12 +32,12 @@ class LSTM(Model):
 			self.capitalization_size = 3
 
 			#Random embeddings: Comment out to avoid duplicate TF variables 
-			words, capitals = self.generate_random_embeddings(vocab, trainable=True)
+			# words, capitals = self.generate_random_embeddings(vocab, trainable=True)
 			#character level modeling 
 			# words, capitals = self.generate_one_hot_embeddings(vocab)
 
-			#Pretrained embeddings 
-			# words, capitals = self.generate_pretrained_embeddings(self.vocab)
+			#Pretrained GloVe embeddings 
+			words, capitals = self.generate_pretrained_embeddings(self.vocab, trainable=False)
 
 			inputs = tf.concat([words, capitals], 2)
 			cell = tf.contrib.rnn.LSTMCell(self.hidden_states, state_is_tuple=True, reuse=None)
@@ -109,9 +109,11 @@ class LSTM(Model):
 
 			mean_auroc = np.mean(self.compute_auroc_scores(x_dev, y_dev))
 			print("Dev Set - Loss: {0:.4f}, Mean AUROC: {1:.4f}\n".format(dev_loss, mean_auroc))
+			print('Accuracies: {0}'.format(self.compute_accuracies(x_dev,y_dev)))
 
 		end_time = int(round(time.time() * 1000))
 		print('Training LSTM Model took {0} seconds.'.format((end_time-start_time) / 1000.0))
+		
 		return train_losses, epochs  
 
 	def predict(self, x):

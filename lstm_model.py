@@ -32,12 +32,12 @@ class LSTM(Model):
 			self.capitalization_size = 3
 
 			#Random embeddings: Comment out to avoid duplicate TF variables 
-			words, capitals = self.generate_random_embeddings(vocab, trainable=True)
+			# words, capitals = self.generate_random_embeddings(vocab, trainable=True)
 			#character level modeling 
 			# words, capitals = self.generate_one_hot_embeddings(vocab)
 
 			#Pretrained GloVe embeddings 
-			# words, capitals = self.generate_pretrained_embeddings(self.vocab, trainable=True)
+			words, capitals = self.generate_pretrained_embeddings(self.vocab, trainable=False)
 
 			inputs = tf.concat([words, capitals], 2)
 			cell = tf.contrib.rnn.LSTMCell(self.hidden_states, state_is_tuple=True, reuse=None)
@@ -144,7 +144,7 @@ if __name__ == "__main__":
 	# max_comment_length *= 5
 	feature_extractor = OneHotFeatureExtractor(max_comment_length)
 	
-	train_data = DataSet(DataSet.TRAIN_CSV, feature_extractor, verbose=True, use_glove=False, character_level=False) 
+	train_data = DataSet(DataSet.TRAIN_CSV, feature_extractor, verbose=True, use_glove=True, character_level=True) 
 	x, y = train_data.get_data()
 	
 	DEV_SPLIT = 140000
@@ -160,7 +160,7 @@ if __name__ == "__main__":
 	
 	feature_extractor = OneHotFeatureExtractor(max_comment_length, train_data.vocab)
 	del train_data.comments
-	test_data = DataSet(DataSet.TEST_CSV, feature_extractor, test=True, verbose=True, use_glove=False, character_level=False) 	
+	test_data = DataSet(DataSet.TEST_CSV, feature_extractor, test=True, verbose=True, use_glove=True, character_level=True) 	
 	x, y = test_data.get_data()
 	
 	lstm.write_predictions_to_file(test_data.comments, x)

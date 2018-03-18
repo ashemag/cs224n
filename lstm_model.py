@@ -32,7 +32,9 @@ class LSTM(Model):
 			self.capitalization_size = 3
 
 			#Random embeddings: Comment out to avoid duplicate TF variables 
-			words, capitals = self.generate_one_hot_embeddings(vocab)
+			words, capitals = self.generate_random_embeddings(vocab, trainable=False)
+			#character level modeling 
+			# words, capitals = self.generate_one_hot_embeddings(vocab)
 
 			#Pretrained embeddings 
 			# words, capitals = self.generate_pretrained_embeddings(self.vocab)
@@ -137,9 +139,10 @@ class LSTM(Model):
 # Debugging / Testing code
 if __name__ == "__main__":
 	max_comment_length = 100 
+	# max_comment_length *= 5
 	feature_extractor = OneHotFeatureExtractor(max_comment_length)
 	
-	train_data = DataSet(DataSet.TRAIN_CSV, feature_extractor, verbose=True, use_glove=False, character_level=True) 
+	train_data = DataSet(DataSet.TRAIN_CSV, feature_extractor, verbose=True, use_glove=False, character_level=False) 
 	x, y = train_data.get_data()
 	
 	DEV_SPLIT = 150000
@@ -150,12 +153,12 @@ if __name__ == "__main__":
 	
 	num_epochs = 5
 
-	lstm = LSTM(train_data.vocab, train_data.comments, comment_length=max_comment_length * 5)
+	lstm = LSTM(train_data.vocab, train_data.comments, comment_length=max_comment_length)
 	train_losses, epochs = lstm.train(x_train, y_train, x_dev, y_dev, num_epochs = num_epochs)
 	
 	feature_extractor = OneHotFeatureExtractor(max_comment_length, train_data.vocab)
 	del train_data.comments
-	test_data = DataSet(DataSet.TEST_CSV, feature_extractor, test=True, verbose=True, use_glove=False, character_level=True) 	
+	test_data = DataSet(DataSet.TEST_CSV, feature_extractor, test=True, verbose=True, use_glove=False, character_level=False) 	
 	x, y = test_data.get_data()
 	
 	lstm.write_predictions_to_file(test_data.comments, x)

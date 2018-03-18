@@ -37,7 +37,7 @@ class LSTM(Model):
 			# words, capitals = self.generate_one_hot_embeddings(vocab)
 
 			#Pretrained GloVe embeddings 
-			words, capitals = self.generate_pretrained_embeddings(self.vocab, trainable=False)
+			words, capitals = self.generate_pretrained_embeddings(self.vocab, trainable=True)
 
 			inputs = tf.concat([words, capitals], 2)
 			cell = tf.contrib.rnn.LSTMCell(self.hidden_states, state_is_tuple=True, reuse=None)
@@ -147,7 +147,7 @@ if __name__ == "__main__":
 	train_data = DataSet(DataSet.TRAIN_CSV, feature_extractor, verbose=True, use_glove=False, character_level=False) 
 	x, y = train_data.get_data()
 	
-	DEV_SPLIT = 150000
+	DEV_SPLIT = 140000
 	#DEV_SPLIT = 1000
 	#DEV_SPLIT2 = -20000
 	x_train, x_dev = x[:DEV_SPLIT], x[DEV_SPLIT:]

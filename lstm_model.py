@@ -147,7 +147,7 @@ if __name__ == "__main__":
 	train_data = DataSet(DataSet.TRAIN_CSV, feature_extractor, verbose=True, use_glove=False, character_level=True) 
 	x, y = train_data.get_data()
 	
-	DEV_SPLIT = 140000
+	DEV_SPLIT = 150000
 	#DEV_SPLIT = 1000
 	#DEV_SPLIT2 = -20000
 	x_train, x_dev = x[:DEV_SPLIT], x[DEV_SPLIT:]

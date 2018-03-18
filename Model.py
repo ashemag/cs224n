@@ -60,19 +60,6 @@ class Model:
 			else: 
 				embeddings.append(np.random.normal(mean, std, embedding_size))
 		return np.array(embeddings).astype(np.float32) 
-		
-		# embedding_dim = 200 
-		# embed_comments = [] # Contains the 'average' embedding for each comment
-		# for comment in comments:
-		# 	avg_embed = np.zeros(embedding_dim) 
-		# 	for word in comment.words:
-		# 		embed = embeddings_index.get(word)
-		# 		if embed is not None:
-		# 			avg_embed += embed 
-		# 	embed_comments.append(avg_embed/len(comment.words))
-		# print("=== Average Embedding for each comment found ===")
-		# embed_comments =  np.array(embed_comments) #comment size x embedding size 
-		# return embed_comments
 
 	def generate_pretrained_embeddings(self, vocab, embedding_size=200, trainable=False): 
 		E_words = tf.get_variable(

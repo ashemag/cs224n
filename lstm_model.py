@@ -33,6 +33,7 @@ class LSTM(Model):
 
 			#Random embeddings: Comment out to avoid duplicate TF variables 
 			# words, capitals = self.generate_random_embeddings(vocab, trainable=True)
+			
 			#character level modeling 
 			words, capitals = self.generate_one_hot_embeddings(vocab)
 
@@ -154,7 +155,7 @@ if __name__ == "__main__":
 	
 	num_epochs = 5
 
-	lstm = LSTM(train_data.vocab, train_data.comments, comment_length=max_comment_length)
+	lstm = LSTM(train_data.vocab, train_data.comments, comment_length=max_comment_length * 5)
 	train_losses, epochs = lstm.train(x_train, y_train, x_dev, y_dev, num_epochs = num_epochs)
 	
 	feature_extractor = OneHotFeatureExtractor(max_comment_length, train_data.vocab)

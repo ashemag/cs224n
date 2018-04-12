@@ -1,3 +1,5 @@
-# cs224n final project
+# CS224n final project
 
-final project proposal editing link: https://docs.google.com/forms/d/e/1FAIpQLSekFKmNjv1HTtT7LDHuGqHTGg1XeVcaFQiOxenozH_wlwuswg/formResponse
+The increase in the accessibility and use of written expression on the Internet over the past decade has brought an alarming increase in toxic communication. This antisocial behavior has negative psychological effects and triggers more antisocial behavior. Thus, the task of identifying and removing toxic communication from public forums is critical. The task of analyzing a large corpus of comments is infeasible for human moderators. As a result, researchers are incentivized to automate the task of detecting inappropriate content. In this project, we discuss our approach for using Natural Language Processing (NLP) techniques to develop a series of Deep Learning models capable of predicting whether or not internet comments contain various forms of toxicity. We begin by exploring the accuracy of a number of models in detecting toxicity on a test set classified by humans. We then tune the best model in order to achieve competitive results.
+
+[Paper](deep-learning-approaches.pdf)
